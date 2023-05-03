@@ -51,7 +51,7 @@ pub fn run() {
             } else {
                 println!("Your total: {}\n", sum);
             }
-            // Decide if sum or special is used
+            // Decide if sum or special is used for the hand total
             let sum = if special < 22 && special > sum {
                 special
             } else {
@@ -240,6 +240,7 @@ impl Casino {
 }
 
 pub fn new_deck() -> Vec<Card> {
+    // Pips are not used, they are the symbols on the Card
     // Suit are the symbols on the cards
     let suits = vec!["Hearts", "Diamonds", "Spades", "Clubs"];
     // Face value hash map
