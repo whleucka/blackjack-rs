@@ -21,6 +21,7 @@ struct Casino {
     deck: Option<Vec<Card>>,
     hand: Option<Vec<Card>>,
     player: Player,
+    pot: i32,
 }
 
 pub fn run() {
@@ -28,6 +29,7 @@ pub fn run() {
     let mut casino = Casino {
         deck: None,
         hand: None,
+        pot: 0,
         player: Player {
             balance: 1000,
             hand: None,
@@ -39,6 +41,20 @@ pub fn run() {
     'game_loop: loop {
         let div = "--------------------------------------------------------------------".blue();
         println!("{}\n", div);
+
+        if casino.player.balance <= 0 {
+            println!("You are out of money! Game over.\n");
+            break 'game_loop;
+        }
+        let wager = casino.wager();
+        if wager.is_ok() {
+            let wager = wager.unwrap();
+            println!("You will wager: ${}\n", wager);
+            casino.pot = wager;
+        } else {
+            continue;
+        }
+
         let msg = "Dealing hands".green();
         println!("{}...\n", msg);
         casino.deal();
@@ -100,12 +116,14 @@ pub fn run() {
                 // Dealer bust
                 let msg = "Dealer Bust, You Win".green();
                 println!("{}!\n", msg);
+                casino.player.balance += casino.pot;
                 break 'dealer_loop;
             }
             if casino.hand.as_ref().unwrap().len() == 2 && sum == 21 {
-                // You win
+                // Dealer BlackJack
                 let msg = "BlackJack, You Lose".red();
                 println!("{}!\n", msg);
+                casino.player.balance -= casino.pot;
                 break 'dealer_loop;
             }
             if sum >= 17 {
@@ -117,10 +135,12 @@ pub fn run() {
                 } else if player_sum > sum {
                     let msg = "You Win".green();
                     println!("{}!\n", msg);
+                    casino.player.balance += casino.pot;
                     break 'dealer_loop;
                 } else {
                     let msg = "You Lose".red();
                     println!("{}!\n", msg);
+                    casino.player.balance -= casino.pot;
                     break 'dealer_loop;
                 }
             }
@@ -195,6 +215,24 @@ impl Casino {
         std::io::stdin().read_line(&mut answer).unwrap();
         if answers.contains(&answer.as_str().trim()) {
             return Ok(answer);
+        }
+        Err(())
+    }
+
+    pub fn wager(&mut self) -> Result<i32, ()> {
+        let msg = "Place your bets".green();
+        println!("{}...\n", msg);
+        let mut answer = String::new();
+        println!("Your current balance is: ${}", self.player.balance);
+        std::io::stdin().read_line(&mut answer).unwrap();
+        // Don't forget to trim the stdin \n
+        let answer = answer.trim().parse().unwrap();
+        if answer > 0 {
+            if answer > self.player.balance {
+                println!("You don't have enough money to make that wager");
+            } else {
+                return Ok(answer);
+            }
         }
         Err(())
     }
