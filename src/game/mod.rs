@@ -24,6 +24,7 @@ struct Casino {
 }
 
 pub fn run() {
+    // Game variable init
     let mut casino = Casino {
         deck: None,
         hand: None,
@@ -32,98 +33,111 @@ pub fn run() {
             hand: None,
         },
     };
-    loop {
-        'outer: loop {
-            let div = "--------------------------------------------------------------------".blue();
-            println!("{}\n", div);
-            // TODO ask for wagers ??
-            let msg = "Suffling the deck".yellow();
-            println!("{}...", msg);
-            casino.shuffle_deck();
-            let msg = "Dealing hands".green();
-            println!("{}...\n", msg);
-            casino.deal();
-            println!("Dealer cards:\n{}", casino.display_hand(false));
-            'player_loop: loop {
-                let (sum, special) = casino.hand_total(true);
-                println!("Your cards:\n{}", casino.display_hand(true));
-                if sum != special && special < 22 {
-                    println!("Your total: {} or {}\n", sum, special);
-                } else {
-                    println!("Your total: {}\n", sum);
-                }
-                if sum > 21 {
-                    // You bust
-                    let msg = "You Bust".red();
-                    println!("{}!\n", msg);
-                    continue 'outer;
-                }
-                if sum == 21 || special == 21 {
-                    // You win
-                    let msg = "BlackJack".green();
-                    println!("{}!\n", msg);
+
+    // Game starts
+    casino.shuffle_deck();
+    'game_loop: loop {
+        let div = "--------------------------------------------------------------------".blue();
+        println!("{}\n", div);
+        let msg = "Dealing hands".green();
+        println!("{}...\n", msg);
+        casino.deal();
+        println!("Dealer cards:\n{}", casino.display_hand(false));
+        'player_loop: loop {
+            let (sum, special) = casino.hand_total(true);
+            println!("Your cards:\n{}", casino.display_hand(true));
+            if sum != special && special < 22 {
+                println!("Your total: {} or {}\n", sum, special);
+            } else {
+                println!("Your total: {}\n", sum);
+            }
+            // Decide if sum or special is used
+            let sum = if special < 22 && special > sum {
+                special
+            } else {
+                sum
+            };
+            // Detect bust / win
+            if sum > 21 {
+                // You bust
+                let msg = "You Bust".red();
+                println!("{}!\n", msg);
+                continue 'game_loop;
+            }
+            if casino.player.hand.as_ref().unwrap().len() == 2 && sum == 21 {
+                // You win
+                let msg = "BlackJack, You Win".green();
+                println!("{}!\n", msg);
+                continue 'game_loop;
+            }
+            let action = casino.action();
+            if action.is_ok() {
+                let action = action.unwrap();
+                if action.trim() == "h" {
+                    casino.deal_hand(true);
+                } else if action.trim() == "s" {
+                    println!("\nStand..\n");
                     break 'player_loop;
                 }
-                let action = casino.action();
-                if action.is_ok() {
-                    let action = action.unwrap();
-                    if action.trim() == "h" {
-                        casino.deal_hand(true);
-                    } else if action.trim() == "s" {
-                        println!("\nStand..\n");
-                        break 'player_loop;
-                    }
-                }
             }
-            'dealer_loop: loop {
-                casino.deal_hand(false);
-                let (sum, special) = casino.hand_total(false);
-                println!("Dealer cards:\n{}", casino.display_hand(false));
-                if sum != special && special < 22 {
-                    println!("Dealer total: {} or {}\n", sum, special);
+        }
+        'dealer_loop: loop {
+            casino.deal_hand(false);
+            let (sum, special) = casino.hand_total(false);
+            println!("Dealer cards:\n{}", casino.display_hand(false));
+            if sum != special && special < 22 {
+                println!("Dealer total: {} or {}\n", sum, special);
+            } else {
+                println!("Dealer total: {}\n", sum);
+            }
+            // Same here
+            let sum = if special < 22 && special > sum {
+                special
+            } else {
+                sum
+            };
+            if sum > 21 {
+                // Dealer bust
+                let msg = "Dealer Bust, You Win".green();
+                println!("{}!\n", msg);
+                break 'dealer_loop;
+            }
+            if casino.hand.as_ref().unwrap().len() == 2 && sum == 21 {
+                // You win
+                let msg = "BlackJack, You Lose".red();
+                println!("{}!\n", msg);
+                break 'dealer_loop;
+            }
+            if sum >= 17 {
+                let (player_sum, _) = casino.hand_total(true);
+                if player_sum == sum {
+                    let msg = "Push".yellow();
+                    println!("{}!\n", msg);
+                    break 'dealer_loop;
+                } else if player_sum > sum {
+                    let msg = "You Win".green();
+                    println!("{}!\n", msg);
+                    break 'dealer_loop;
                 } else {
-                    println!("Dealer total: {}\n", sum);
-                }
-                if sum > 21 {
-                    // Dealer bust
-                    let msg = "Dealer Bust".green();
+                    let msg = "You Lose".red();
                     println!("{}!\n", msg);
                     break 'dealer_loop;
                 }
-                if sum == 21 || special == 21 {
-                    // You win
-                    let msg = "BlackJack".red();
-                    println!("{}!\n", msg);
-                    break 'dealer_loop;
-                }
-                if sum >= 17 {
-                    let (player_sum, _) = casino.hand_total(true);
-                    if player_sum == sum {
-                        let msg = "Push".yellow();
-                        println!("{}!\n", msg);
-                        break 'dealer_loop;
-                    } else if player_sum > sum {
-                        let msg = "You Win".green();
-                        println!("{}!\n", msg);
-                        break 'dealer_loop;
-                    } else {
-                        let msg = "You Lose".red();
-                        println!("{}!\n", msg);
-                        break 'dealer_loop;
-                    }
-                }
-                let time = std::time::Duration::from_secs(1);
-                std::thread::sleep(time);
             }
-        } /* end outer */
-    }
+            let time = std::time::Duration::from_millis(1200);
+            std::thread::sleep(time);
+        }
+    } /* end outer */
 }
 
 impl Casino {
     pub fn shuffle_deck(&mut self) {
+        // Shuffle the vector of Cards
         let mut cards = new_deck();
         let mut rng = rand::thread_rng();
         let mut temp: Vec<Card> = Vec::new();
+        let msg = "Suffling the deck".yellow();
+        println!("\n{}...\n", msg);
         while cards.len() > 0 {
             let idx = rng.gen_range(0..=cards.len() - 1);
             let card = cards.get(idx).expect("card index doesn't exist").clone();
@@ -134,6 +148,7 @@ impl Casino {
     }
 
     pub fn display_hand(&mut self, is_player: bool) -> String {
+        // Display cards for either player or dealer
         let mut output = String::new();
         if is_player {
             let hand = self.player.hand.as_ref().unwrap();
@@ -150,7 +165,10 @@ impl Casino {
     }
 
     pub fn hand_total(&mut self, is_player: bool) -> (i32, i32) {
+        // We keep track of the two separate hand values
+        // sum: hand value where ace = 1
         let mut sum: i32 = 0;
+        // special: hand value where ace = 11
         let mut special: i32 = 0;
         if is_player {
             let hand = self.player.hand.as_ref().unwrap();
@@ -169,7 +187,9 @@ impl Casino {
     }
 
     pub fn action(&mut self) -> Result<String, ()> {
+        // Vector of possible answers
         let answers = vec!["h", "s"];
+        // Asking the question: Hit or Stand?
         println!("Hit (h) or Stand (s)?");
         let mut answer = String::new();
         std::io::stdin().read_line(&mut answer).unwrap();
@@ -184,38 +204,44 @@ impl Casino {
     }
 
     pub fn deal(&mut self) {
-        let mut dealer_hand: Vec<Card> = Vec::new();
-        let mut player_hand: Vec<Card> = Vec::new();
-        player_hand.push(self.draw_card().unwrap());
-        dealer_hand.push(self.draw_card().unwrap());
-        player_hand.push(self.draw_card().unwrap());
+        let dealer_hand: Vec<Card> = Vec::new();
+        let player_hand: Vec<Card> = Vec::new();
         self.hand = Some(dealer_hand);
         self.player.hand = Some(player_hand);
+        self.deal_hand(true);
+        self.deal_hand(false);
+        self.deal_hand(true);
     }
 
     pub fn deal_hand(&mut self, player_hand: bool) {
-        if self.deck.as_mut().is_none() {
-            println!("\nSuffling the deck...");
-            self.shuffle_deck()
-        }
-        let card = self.draw_card().unwrap();
-        if player_hand {
-            self.player
-                .hand
-                .as_mut()
-                .expect("hand is not available")
-                .push(card);
+        // When we draw the card, the deck could be None.
+        // This will require a new shuffle
+        // It is easier to use an if let here to handle the None case
+        if let Some(card) = self.draw_card() {
+            // Note: card is availabe here via if let
+            if player_hand {
+                self.player
+                    .hand
+                    .as_mut()
+                    .expect("hand is not available")
+                    .push(card);
+            } else {
+                self.hand
+                    .as_mut()
+                    .expect("hand is not available")
+                    .push(card);
+            }
         } else {
-            self.hand
-                .as_mut()
-                .expect("hand is not available")
-                .push(card);
+            self.shuffle_deck();
+            self.deal_hand(player_hand);
         }
     }
 }
 
 pub fn new_deck() -> Vec<Card> {
+    // Pips are the symbols on the cards
     let pips = vec!["Heart", "Diamond", "Spade", "Club"];
+    // Face value hash map
     let face_values = HashMap::from([
         ("Ace", 1),
         ("Two", 2),
@@ -231,12 +257,14 @@ pub fn new_deck() -> Vec<Card> {
         ("Queen", 10),
         ("King", 10),
     ]);
-    let mut cards = Vec::new();
+    // Empty card vector, this will be the card deck
+    let mut cards: Vec<Card> = Vec::new();
 
     for pip in pips {
         for fv in face_values.iter() {
             let (face, value) = fv;
-            let special = if face == &"Ace" { 11 } else { 0 };
+            // Special card: Ace
+            let special = if face == &"Ace" { 10 } else { 0 };
             let card = Card {
                 face: face.to_string(),
                 pip: pip.to_string(),
