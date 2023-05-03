@@ -85,20 +85,21 @@ pub fn run() {
             break 'game_loop;
         }
         // User interaction
-        //let wager = casino._wager();
-        //if wager.is_ok() {
-        //    let wager = wager.unwrap();
-        //    println!("You will wager: ${}\n", wager);
-        //    casino.pot = wager;
-        //} else {
-        //    continue;
-        //}
-        println!("Your current balance is: ${}", casino.player.balance);
-        let mut rng = rand::thread_rng();
-        let bet = rng.gen_range(5..(casino.player.balance as f32 * 0.1f32) as i32);
-        let wager = bet;
-        println!("You will wager: ${}\n", wager);
-        casino.pot = wager;
+        let wager = casino._wager();
+        if wager.is_ok() {
+            let wager = wager.unwrap();
+            println!("You will wager: ${}\n", wager);
+            casino.pot = wager;
+        } else {
+            continue;
+        }
+        // Simulation
+        //println!("Your current balance is: ${}", casino.player.balance);
+        //let mut rng = rand::thread_rng();
+        //let bet = rng.gen_range(5..(casino.player.balance as f32 * 0.1f32) as i32);
+        //let wager = bet;
+        //println!("You will wager: ${}\n", wager);
+        //casino.pot = wager;
 
         let msg = "Dealing hands".green();
         println!("{}...\n", msg);
@@ -123,6 +124,7 @@ pub fn run() {
                 // You bust
                 let msg = "You Bust".red();
                 println!("{}!\n", msg);
+                casino.player.balance -= casino.pot;
                 continue 'game_loop;
             }
             if casino.player.hand.as_ref().unwrap().len() == 2 && sum == 21 {
@@ -134,24 +136,24 @@ pub fn run() {
                 continue 'game_loop;
             }
             // User interaction
-            // let action = casino._action();
-            // if action.is_ok() {
-            //     let action = action.unwrap();
-            //     if action.trim() == "h" {
-            //         casino.deal_hand(true);
-            //     } else if action.trim() == "s" {
-            //         println!("\nStand..\n");
-            //         break 'player_loop;
-            //     }
-            // }
-            // Automated from strategy
-            let action = casino.strategy();
-            if *action == 'h' {
-                casino.deal_hand(true);
-            } else if *action == 's' {
-                println!("\nStand..\n");
-                break 'player_loop;
+            let action = casino._action();
+            if action.is_ok() {
+                let action = action.unwrap();
+                if action.trim() == "h" {
+                    casino.deal_hand(true);
+                } else if action.trim() == "s" {
+                    println!("\nStand..\n");
+                    break 'player_loop;
+                }
             }
+            // Simulated
+            //let action = casino.strategy();
+            //if *action == 'h' {
+            //    casino.deal_hand(true);
+            //} else if *action == 's' {
+            //    println!("\nStand..\n");
+            //    break 'player_loop;
+            //}
             let time = std::time::Duration::from_millis(DELAY);
             std::thread::sleep(time);
         }
