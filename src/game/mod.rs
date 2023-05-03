@@ -26,6 +26,8 @@ struct Casino {
     header: HashMap<i32, i32>,
 }
 
+const DELAY: u64 = 500;
+
 pub fn run() {
     // Game variable init
     let mut casino = Casino {
@@ -93,7 +95,7 @@ pub fn run() {
         //}
         println!("Your current balance is: ${}", casino.player.balance);
         let mut rng = rand::thread_rng();
-        let bet = rng.gen_range(5..(casino.player.balance as f32 * 0.1) as i32);
+        let bet = rng.gen_range(5..(casino.player.balance as f32 * 0.1f32) as i32);
         let wager = bet;
         println!("You will wager: ${}\n", wager);
         casino.pot = wager;
@@ -127,6 +129,8 @@ pub fn run() {
                 // You win
                 let msg = "BlackJack, You Win".green();
                 println!("{}!\n", msg);
+                // BlackJack pays out 1.5 x pot
+                casino.player.balance += (casino.pot as f32 * 1.5f32) as i32;
                 continue 'game_loop;
             }
             // User interaction
@@ -148,7 +152,7 @@ pub fn run() {
                 println!("\nStand..\n");
                 break 'player_loop;
             }
-            let time = std::time::Duration::from_millis(1200);
+            let time = std::time::Duration::from_millis(DELAY);
             std::thread::sleep(time);
         }
         'dealer_loop: loop {
@@ -198,7 +202,7 @@ pub fn run() {
                     break 'dealer_loop;
                 }
             }
-            let time = std::time::Duration::from_millis(1200);
+            let time = std::time::Duration::from_millis(DELAY);
             std::thread::sleep(time);
         }
     } /* end outer */
