@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct Card {
-    pub pip: String,
+    pub suit: String,
     pub face: String,
     pub value: i32,
     pub special: i32,
@@ -153,12 +153,12 @@ impl Casino {
         if is_player {
             let hand = self.player.hand.as_ref().unwrap();
             for card in hand.iter() {
-                output.push_str(&format!("{} of {}\n", card.face, card.pip));
+                output.push_str(&format!("{} of {}\n", card.face, card.suit));
             }
         } else {
             let hand = self.hand.as_ref().unwrap();
             for card in hand.iter() {
-                output.push_str(&format!("{} of {}\n", card.face, card.pip));
+                output.push_str(&format!("{} of {}\n", card.face, card.suit));
             }
         }
         output
@@ -232,6 +232,7 @@ impl Casino {
                     .push(card);
             }
         } else {
+            // None
             self.shuffle_deck();
             self.deal_hand(player_hand);
         }
@@ -239,8 +240,8 @@ impl Casino {
 }
 
 pub fn new_deck() -> Vec<Card> {
-    // Pips are the symbols on the cards
-    let pips = vec!["Heart", "Diamond", "Spade", "Club"];
+    // Suit are the symbols on the cards
+    let suits = vec!["Hearts", "Diamonds", "Spades", "Clubs"];
     // Face value hash map
     let face_values = HashMap::from([
         ("Ace", 1),
@@ -260,14 +261,14 @@ pub fn new_deck() -> Vec<Card> {
     // Empty card vector, this will be the card deck
     let mut cards: Vec<Card> = Vec::new();
 
-    for pip in pips {
+    for suit in suits {
         for fv in face_values.iter() {
             let (face, value) = fv;
             // Special card: Ace
             let special = if face == &"Ace" { 10 } else { 0 };
             let card = Card {
                 face: face.to_string(),
-                pip: pip.to_string(),
+                suit: suit.to_string(),
                 value: *value,
                 special,
             };
