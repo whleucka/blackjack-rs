@@ -44,7 +44,7 @@ enum GameState {
     PlaceBets,
     DealCards,
     PlayersTurn,
-    DealersTurn,
+    DealerTurn,
     Pay,
 }
 
@@ -80,7 +80,7 @@ impl Game {
         'players: loop {}
     }
     pub fn dealers_turn(&mut self) {
-        self.state = GameState::DealersTurn;
+        self.state = GameState::DealerTurn;
         'dealers: loop {}
     }
     pub fn pay(&mut self) {
