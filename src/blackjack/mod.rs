@@ -3,6 +3,7 @@ use std::{collections::HashMap, num::ParseIntError};
 
 #[derive(Debug)]
 struct Player {
+    index: u8,
     name: String,
     human: bool,
     bankroll: i64,
@@ -57,14 +58,13 @@ pub fn go() {
         players: None,
     };
     game.setup_players();
-    game.shuffle_decks();
-    println!("{:#?}", game);
     //game.new_game();
 }
 
 impl Game {
     pub fn new_game(&mut self) {
         self.state = GameState::NewGame;
+        game.shuffle_decks();
         'game_loop: loop {
             self.state = GameState::RoundStart;
         }
@@ -83,10 +83,8 @@ impl Game {
         self.state = GameState::DealersTurn;
         'dealers: loop {}
     }
-    pub fn draw_card(&mut self) -> Option<Card> {
-        let decks = self.dealer.decks.as_mut().unwrap();
-        let deck = decks.pop()?;
-        deck.cards?.pop()
+    pub fn pay(&mut self) {
+        self.state = GameState::Pay;
     }
     pub fn shuffle_decks(&mut self) {
         self.state = GameState::ShuffleDecks;
@@ -113,15 +111,32 @@ impl Game {
             *deck = shuffled_deck;
         }
     }
-    pub fn pay(&mut self) {
-        self.state = GameState::Pay;
+    pub fn draw_card(&mut self) -> Option<Card> {
+        let decks = self.dealer.decks.as_mut().unwrap();
+        let deck = decks.pop()?;
+        deck.cards?.pop()
+    }
+    pub fn deal_card(&mut self, player_index: &u8) {
+        // Attempt to draw a card
+        if let Some(card) = self.draw_card() {
+            let players = self.players.as_mut().unwrap();
+            players[*player_index as usize]
+                .hand
+                .as_mut()
+                .unwrap()
+                .push(card)
+        } else {
+            // Deck is None -- time to shuffle
+            self.shuffle_decks();
+            self.deal_card(player_index);
+        }
     }
     pub fn setup_decks(&mut self) {
         let number_of_decks: u8 = 6;
         // Create new Vec<Deck>
         let mut decks = Vec::new();
         // Create n decks
-        for i in 0..number_of_decks {
+        for _i in 0..number_of_decks {
             let deck = self.create_deck();
             decks.push(deck);
         }
@@ -190,7 +205,7 @@ impl Game {
         self.players = Some(Vec::new());
         for i in 0..*number_of_players {
             let is_human: bool = self.ask_create_player(&i);
-            self.add_player(&is_human, &format!("Player {}", &i + 1));
+            self.add_player(&is_human, &i, &format!("Player {}", &i + 1));
         }
     }
     pub fn ask_create_player(&mut self, player_index: &u8) -> bool {
@@ -210,13 +225,15 @@ impl Game {
         // Return if the player is human based on input
         mode.contains("h")
     }
-    pub fn add_player(&mut self, is_human: &bool, name: &str) {
+    pub fn add_player(&mut self, is_human: &bool, index: &u8, name: &str) {
         // Add player to the game
+        let hand = Some(Vec::<Card>::new());
         self.players.as_mut().unwrap().push(Player {
+            index: *index,
             name: String::from(name),
             human: *is_human,
             bankroll: 100,
-            hand: Some(Vec::<Card>::new()),
+            hand,
         });
     }
 }
