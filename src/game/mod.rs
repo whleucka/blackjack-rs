@@ -21,13 +21,53 @@ struct Casino {
     deck: Option<Vec<Card>>,
     hand: Option<Vec<Card>>,
     player: Player,
+    pot: i32,
+    chart: HashMap<i32, Vec<char>>,
+    header: HashMap<i32, i32>,
 }
+
+const DELAY: u64 = 500;
 
 pub fn run() {
     // Game variable init
     let mut casino = Casino {
         deck: None,
         hand: None,
+        pot: 0,
+        chart: HashMap::from([
+            (2, vec!['h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h']),
+            (3, vec!['h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h']),
+            (4, vec!['h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h']),
+            (5, vec!['h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h']),
+            (6, vec!['h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h']),
+            (7, vec!['h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h']),
+            (8, vec!['h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h']),
+            (9, vec!['h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h']),
+            (10, vec!['h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h']),
+            (11, vec!['h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h']),
+            (12, vec!['h', 'h', 's', 's', 's', 'h', 'h', 'h', 'h', 'h']),
+            (13, vec!['s', 's', 's', 's', 's', 'h', 'h', 'h', 'h', 'h']),
+            (14, vec!['s', 's', 's', 's', 's', 'h', 'h', 'h', 'h', 'h']),
+            (15, vec!['s', 's', 's', 's', 's', 'h', 'h', 'h', 'h', 'h']),
+            (16, vec!['s', 's', 's', 's', 's', 'h', 'h', 'h', 'h', 'h']),
+            (17, vec!['s', 's', 's', 's', 's', 's', 's', 's', 's', 's']),
+            (18, vec!['s', 's', 's', 's', 's', 's', 's', 's', 's', 's']),
+            (19, vec!['s', 's', 's', 's', 's', 's', 's', 's', 's', 's']),
+            (20, vec!['s', 's', 's', 's', 's', 's', 's', 's', 's', 's']),
+            (21, vec!['s', 's', 's', 's', 's', 's', 's', 's', 's', 's']),
+        ]),
+        header: HashMap::from([
+            (1, 9),
+            (2, 0),
+            (3, 1),
+            (4, 2),
+            (5, 3),
+            (6, 4),
+            (7, 5),
+            (8, 6),
+            (9, 7),
+            (10, 8),
+        ]),
         player: Player {
             balance: 1000,
             hand: None,
@@ -39,6 +79,28 @@ pub fn run() {
     'game_loop: loop {
         let div = "--------------------------------------------------------------------".blue();
         println!("{}\n", div);
+
+        if casino.player.balance <= 0 {
+            println!("You are out of money! Game over.\n");
+            break 'game_loop;
+        }
+        // User interaction
+        let wager = casino._wager();
+        if wager.is_ok() {
+            let wager = wager.unwrap();
+            println!("You will wager: ${}\n", wager);
+            casino.pot = wager;
+        } else {
+            continue;
+        }
+        // Simulation
+        //println!("Your current balance is: ${}", casino.player.balance);
+        //let mut rng = rand::thread_rng();
+        //let bet = rng.gen_range(5..(casino.player.balance as f32 * 0.1f32) as i32);
+        //let wager = bet;
+        //println!("You will wager: ${}\n", wager);
+        //casino.pot = wager;
+
         let msg = "Dealing hands".green();
         println!("{}...\n", msg);
         casino.deal();
@@ -62,15 +124,19 @@ pub fn run() {
                 // You bust
                 let msg = "You Bust".red();
                 println!("{}!\n", msg);
+                casino.player.balance -= casino.pot;
                 continue 'game_loop;
             }
             if casino.player.hand.as_ref().unwrap().len() == 2 && sum == 21 {
                 // You win
                 let msg = "BlackJack, You Win".green();
                 println!("{}!\n", msg);
+                // BlackJack pays out 1.5 x pot
+                casino.player.balance += (casino.pot as f32 * 1.5f32) as i32;
                 continue 'game_loop;
             }
-            let action = casino.action();
+            // User interaction
+            let action = casino._action();
             if action.is_ok() {
                 let action = action.unwrap();
                 if action.trim() == "h" {
@@ -80,6 +146,16 @@ pub fn run() {
                     break 'player_loop;
                 }
             }
+            // Simulated
+            //let action = casino.strategy();
+            //if *action == 'h' {
+            //    casino.deal_hand(true);
+            //} else if *action == 's' {
+            //    println!("\nStand..\n");
+            //    break 'player_loop;
+            //}
+            let time = std::time::Duration::from_millis(DELAY);
+            std::thread::sleep(time);
         }
         'dealer_loop: loop {
             casino.deal_hand(false);
@@ -100,12 +176,14 @@ pub fn run() {
                 // Dealer bust
                 let msg = "Dealer Bust, You Win".green();
                 println!("{}!\n", msg);
+                casino.player.balance += casino.pot;
                 break 'dealer_loop;
             }
             if casino.hand.as_ref().unwrap().len() == 2 && sum == 21 {
-                // You win
+                // Dealer BlackJack
                 let msg = "BlackJack, You Lose".red();
                 println!("{}!\n", msg);
+                casino.player.balance -= casino.pot;
                 break 'dealer_loop;
             }
             if sum >= 17 {
@@ -117,20 +195,34 @@ pub fn run() {
                 } else if player_sum > sum {
                     let msg = "You Win".green();
                     println!("{}!\n", msg);
+                    casino.player.balance += casino.pot;
                     break 'dealer_loop;
                 } else {
                     let msg = "You Lose".red();
                     println!("{}!\n", msg);
+                    casino.player.balance -= casino.pot;
                     break 'dealer_loop;
                 }
             }
-            let time = std::time::Duration::from_millis(1200);
+            let time = std::time::Duration::from_millis(DELAY);
             std::thread::sleep(time);
         }
     } /* end outer */
 }
 
 impl Casino {
+    pub fn strategy(&mut self) -> &char {
+        let dealer_card = self.hand.as_mut().unwrap();
+        let header_idx = self.header[&dealer_card[0].value];
+        let (sum, special) = self.hand_total(true);
+        let sum = if special < 22 && special > sum {
+            special
+        } else {
+            sum
+        };
+        self.chart[&sum].iter().nth(header_idx as usize).unwrap()
+    }
+
     pub fn shuffle_deck(&mut self) {
         // Shuffle the vector of Cards
         let mut cards = new_deck();
@@ -186,7 +278,7 @@ impl Casino {
         (sum, special)
     }
 
-    pub fn action(&mut self) -> Result<String, ()> {
+    pub fn _action(&mut self) -> Result<String, ()> {
         // Vector of possible answers
         let answers = vec!["h", "s"];
         // Asking the question: Hit or Stand?
@@ -195,6 +287,24 @@ impl Casino {
         std::io::stdin().read_line(&mut answer).unwrap();
         if answers.contains(&answer.as_str().trim()) {
             return Ok(answer);
+        }
+        Err(())
+    }
+
+    pub fn _wager(&mut self) -> Result<i32, ()> {
+        let msg = "Place your bets".green();
+        println!("{}...\n", msg);
+        let mut answer = String::new();
+        println!("Your current balance is: ${}", self.player.balance);
+        std::io::stdin().read_line(&mut answer).unwrap();
+        // Don't forget to trim the stdin \n
+        let answer = answer.trim().parse().unwrap();
+        if answer > 0 {
+            if answer > self.player.balance {
+                println!("You don't have enough money to make that wager");
+            } else {
+                return Ok(answer);
+            }
         }
         Err(())
     }
