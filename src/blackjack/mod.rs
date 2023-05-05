@@ -1,7 +1,7 @@
 use rand::Rng;
 use std::{collections::HashMap, num::ParseIntError};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Player {
     index: u8,
     name: String,
@@ -9,6 +9,7 @@ pub struct Player {
     bankroll: i64,
     wager: i64,
     hand: Option<Vec<Card>>,
+    hand_status: HandStatus,
 }
 
 #[derive(Debug)]
@@ -34,6 +35,15 @@ pub struct Game {
     state: GameState,
     dealer: Dealer,
     players: Option<Vec<Player>>,
+}
+
+#[derive(Debug)]
+pub enum HandStatus {
+    Idle,
+    Win,
+    Lose,
+    BlackJack,
+    Push,
 }
 
 #[derive(Debug)]
@@ -63,6 +73,9 @@ pub fn go() {
 const DELAY: u64 = 500;
 
 impl Game {
+    /**
+     * BlackJack.rs
+     */
     pub fn new_game(&mut self) {
         self.state = GameState::NewGame;
         self.setup_players();
@@ -89,15 +102,14 @@ impl Game {
             std::thread::sleep(time);
         }
     }
+    /**
+     * STATE FUNCTIONS
+     */
     pub fn check_players(&mut self) {
         let players = self.players.as_mut().unwrap();
         if players.len() == 0 {
             self.state = GameState::GameOver;
         }
-    }
-    pub fn game_over(&mut self) {
-        println!("\nGame over. Thanks for playing!\n");
-        std::process::exit(0);
     }
     pub fn round_start(&mut self) {
         println!("\n\n-+- New Round! -+-\n\n");
@@ -184,6 +196,9 @@ impl Game {
             players[i].hand.as_mut().unwrap().clear();
         }
     }
+    /**
+     * HELPER FUNCTIONS
+     */
     pub fn shuffle_decks(&mut self) {
         self.setup_decks();
         // The dealer's decks
@@ -349,7 +364,12 @@ impl Game {
             bankroll: 100,
             wager: 0,
             hand,
+            hand_status: HandStatus::Idle,
         };
         self.players.as_mut().unwrap().push(player);
+    }
+    pub fn game_over(&mut self) {
+        println!("\nGame over. Thanks for playing!\n");
+        std::process::exit(0);
     }
 }
