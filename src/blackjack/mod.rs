@@ -62,15 +62,159 @@ pub enum GameState {
 
 pub fn go() {
     let hand = Some(Vec::<Card>::new());
+    let dealer = Dealer { decks: None, hand };
     let mut game = Game {
         state: GameState::Idle,
-        dealer: Dealer { decks: None, hand },
+        dealer,
         players: None,
     };
     game.new_game();
 }
 
 const DELAY: u64 = 500;
+
+impl Dealer {
+    pub fn display_hand(&mut self) {
+        let dealer_hand = self.hand.as_ref().unwrap();
+        for card in dealer_hand {
+            if dealer_hand.len() == 1 {
+                println!("Dealer card: {} of {}", card.face, card.suit);
+            } else {
+                println!("Dealer cards: {} of {}", card.face, card.suit);
+            }
+        }
+        let dealer_value: (u8, u8) = {
+            let mut sum: u8 = 0;
+            let mut modified: u8 = 0;
+            for card in dealer_hand {
+                let modifier: u8 = if card.face == "Ace" { 10 } else { 0 };
+                sum += card.value;
+                modified += card.value + modifier;
+            }
+            (sum, modified)
+        };
+        {
+            let (sum, modified) = dealer_value;
+            if sum != modified && modified < 22 {
+                println!("Dealer value: {} or {}", sum, modified);
+            } else {
+                println!("Dealer value: {}", sum);
+            }
+        }
+    }
+    pub fn create_deck(&mut self) -> Deck {
+        // Pips are not used, they are the symbols on the Card
+        // Suit are the symbols on the cards
+        let suits = vec!["Hearts", "Diamonds", "Spades", "Clubs"];
+        // Face value hash map
+        let face_values = HashMap::from([
+            ("Ace", 1),
+            ("Two", 2),
+            ("Three", 3),
+            ("Four", 4),
+            ("Five", 5),
+            ("Six", 6),
+            ("Seven", 7),
+            ("Eight", 8),
+            ("Nine", 9),
+            ("Ten", 10),
+            ("Jack", 10),
+            ("Queen", 10),
+            ("King", 10),
+        ]);
+        // Empty card vector, this will be the card deck
+        let mut cards: Vec<Card> = Vec::new();
+
+        for suit in suits {
+            // for each face value
+            for fv in face_values.iter() {
+                let (face, value) = fv;
+                let card = Card {
+                    suit: String::from(suit),
+                    face: String::from(*face),
+                    value: *value,
+                };
+                cards.push(card);
+            }
+        }
+        // Return a deck with some cards
+        Deck { cards: Some(cards) }
+    }
+    pub fn setup_decks(&mut self) {
+        let number_of_decks: u8 = 6;
+        // Create new Vec<Deck>
+        let mut decks = Vec::new();
+        // Create n decks
+        for _i in 0..number_of_decks {
+            let deck = self.create_deck();
+            decks.push(deck);
+        }
+        // Assign the dealer some decks
+        self.decks = Some(decks);
+    }
+    pub fn shuffle_decks(&mut self) {
+        self.setup_decks();
+        // The dealer's decks
+        let decks = self.decks.as_mut().unwrap();
+        // Loop around each dec in Vec<Deck>
+        for deck in decks {
+            // Unwrap the cards in the deck
+            let cards = deck.cards.as_mut().unwrap();
+            let mut rng = rand::thread_rng();
+            let mut temp: Vec<Card> = Vec::new();
+            // Rearrange cards
+            while cards.len() > 0 {
+                let idx = rng.gen_range(0..=cards.len() - 1);
+                let card = cards.get(idx).expect("card index doesn't exist").clone();
+                temp.push(card);
+                cards.remove(idx);
+            }
+            // The shuffled deck
+            let shuffled_deck = Deck { cards: Some(temp) };
+            // Assign the dealer's deck to the shuffled deck
+            *deck = shuffled_deck;
+        }
+    }
+}
+
+impl Player {
+    pub fn human_action(&self) -> String {
+        println!("{}: hit (h) or stand (s)?", self.name);
+        let mut action: String = String::new();
+        // Get user input
+        std::io::stdin()
+            .read_line(&mut action)
+            .expect("unable to read line");
+        if !["h", "s"].contains(&action.as_str().to_lowercase().trim()) {
+            self.human_action();
+        }
+        action
+    }
+    pub fn display_hand(&self) {
+        let player_hand = self.hand.as_ref().unwrap();
+        for card in player_hand {
+            println!("{} cards: {} of {}", self.name, card.face, card.suit);
+        }
+        let player_value: (u8, u8) = {
+            let mut sum: u8 = 0;
+            let mut modified: u8 = 0;
+            for card in player_hand {
+                let modifier: u8 = if card.face == "Ace" { 10 } else { 0 };
+                sum += card.value;
+                modified += card.value + modifier;
+            }
+            (sum, modified)
+        };
+        {
+            let (sum, modified) = player_value;
+            if sum != modified && modified < 22 {
+                println!("{} value: {} or {}", self.name, sum, modified);
+            } else {
+                println!("{} value: {}", self.name, sum);
+            }
+        }
+    }
+}
 
 impl Game {
     /**
@@ -79,7 +223,7 @@ impl Game {
     pub fn new_game(&mut self) {
         self.state = GameState::NewGame;
         self.setup_players();
-        self.shuffle_decks();
+        self.dealer.shuffle_decks();
         self.game_loop();
     }
     pub fn game_loop(&mut self) {
@@ -106,7 +250,7 @@ impl Game {
      * STATE FUNCTIONS
      */
     pub fn check_players(&mut self) {
-        let players = self.players.as_mut().unwrap();
+        let players = self.players.as_ref().unwrap();
         if players.len() == 0 {
             self.state = GameState::GameOver;
         }
@@ -177,8 +321,21 @@ impl Game {
     pub fn players_turn(&mut self) {
         println!("\nPlayers Turn!");
         for player in self.players.as_mut().unwrap() {
-            // Show hand total
-            // User interaction (hit, stand, etc)
+            let mut i = 0;
+            'player_turn: loop {
+                player.display_hand();
+                if player.human {
+                    // User interaction (hit, stand, etc)
+                    let action = player.human_action();
+                    if action.trim() == String::from('h') {
+                        // TODO: how to make this work?
+                        //self.deal_card(&i)
+                    } else if action.trim() == String::from('s') {
+                        break 'player_turn;
+                    }
+                }
+            }
+            i += 1;
         }
         self.state = GameState::DealerTurn;
     }
@@ -206,29 +363,6 @@ impl Game {
     /**
      * HELPER FUNCTIONS
      */
-    pub fn shuffle_decks(&mut self) {
-        self.setup_decks();
-        // The dealer's decks
-        let decks = self.dealer.decks.as_mut().unwrap();
-        // Loop around each dec in Vec<Deck>
-        for deck in decks {
-            // Unwrap the cards in the deck
-            let cards = deck.cards.as_mut().unwrap();
-            let mut rng = rand::thread_rng();
-            let mut temp: Vec<Card> = Vec::new();
-            // Rearrange cards
-            while cards.len() > 0 {
-                let idx = rng.gen_range(0..=cards.len() - 1);
-                let card = cards.get(idx).expect("card index doesn't exist").clone();
-                temp.push(card);
-                cards.remove(idx);
-            }
-            // The shuffled deck
-            let shuffled_deck = Deck { cards: Some(temp) };
-            // Assign the dealer's deck to the shuffled deck
-            *deck = shuffled_deck;
-        }
-    }
     pub fn draw_card(&mut self) -> Option<Card> {
         let decks = self.dealer.decks.as_mut().unwrap();
         let mut card: Option<Card> = None;
@@ -241,66 +375,11 @@ impl Game {
         }
         card
     }
-    pub fn display_dealer_hand(&mut self) {
-        let dealer_hand = self.dealer.hand.as_ref().unwrap();
-        for card in dealer_hand {
-            if dealer_hand.len() == 1 {
-                println!("Dealer card: {} of {}", card.face, card.suit);
-            } else {
-                println!("Dealer cards: {} of {}", card.face, card.suit);
-            }
-        }
-        let dealer_value: (u8, u8) = {
-            let mut sum: u8 = 0;
-            let mut modified: u8 = 0;
-            for card in dealer_hand {
-                let modifier: u8 = if card.face == "Ace" { 10 } else { 0 };
-                sum += card.value;
-                modified += card.value + modifier;
-            }
-            (sum, modified)
-        };
-        {
-            let (sum, modified) = dealer_value;
-            if sum != modified && modified < 22 {
-                println!("Dealer value: {} or {}", sum, modified);
-            } else {
-                println!("Dealer value: {}", sum);
-            }
-        }
-    }
-    pub fn display_player_hand(&mut self, player_index: &u8) {
-        let players = self.players.as_mut().unwrap();
-        let i = *player_index as usize;
-        let player_hand = players[i].hand.as_ref().unwrap();
-        for card in player_hand {
-            println!("{} cards: {} of {}", players[i].name, card.face, card.suit);
-        }
-        let player_value: (u8, u8) = {
-            let mut sum: u8 = 0;
-            let mut modified: u8 = 0;
-            for card in player_hand {
-                let modifier: u8 = if card.face == "Ace" { 10 } else { 0 };
-                sum += card.value;
-                modified += card.value + modifier;
-            }
-            (sum, modified)
-        };
-        {
-            let (sum, modified) = player_value;
-            if sum != modified && modified < 22 {
-                println!("{} value: {} or {}", players[i].name, sum, modified);
-            } else {
-                println!("{} value: {}", players[i].name, sum);
-            }
-        }
-    }
     pub fn display_hands(&mut self) {
-        self.display_dealer_hand();
+        self.dealer.display_hand();
         println!("\n");
-        let players = self.players.as_mut().unwrap();
-        for i in 0..players.len() {
-            self.display_player_hand(&(i as u8));
+        for player in self.players.as_mut().unwrap() {
+            player.display_hand();
             println!("\n");
         }
     }
@@ -315,7 +394,7 @@ impl Game {
                 .push(card)
         } else {
             // Deck is None -- time to shuffle
-            self.shuffle_decks();
+            self.dealer.shuffle_decks();
             self.deal_card(player_index);
         }
     }
@@ -325,59 +404,9 @@ impl Game {
             self.dealer.hand.as_mut().unwrap().push(card)
         } else {
             // Deck is None -- time to shuffle
-            self.shuffle_decks();
+            self.dealer.shuffle_decks();
             self.dealer_card();
         }
-    }
-    pub fn setup_decks(&mut self) {
-        let number_of_decks: u8 = 6;
-        // Create new Vec<Deck>
-        let mut decks = Vec::new();
-        // Create n decks
-        for _i in 0..number_of_decks {
-            let deck = self.create_deck();
-            decks.push(deck);
-        }
-        // Assign the dealer some decks
-        self.dealer.decks = Some(decks);
-    }
-    pub fn create_deck(&mut self) -> Deck {
-        // Pips are not used, they are the symbols on the Card
-        // Suit are the symbols on the cards
-        let suits = vec!["Hearts", "Diamonds", "Spades", "Clubs"];
-        // Face value hash map
-        let face_values = HashMap::from([
-            ("Ace", 1),
-            ("Two", 2),
-            ("Three", 3),
-            ("Four", 4),
-            ("Five", 5),
-            ("Six", 6),
-            ("Seven", 7),
-            ("Eight", 8),
-            ("Nine", 9),
-            ("Ten", 10),
-            ("Jack", 10),
-            ("Queen", 10),
-            ("King", 10),
-        ]);
-        // Empty card vector, this will be the card deck
-        let mut cards: Vec<Card> = Vec::new();
-
-        for suit in suits {
-            // for each face value
-            for fv in face_values.iter() {
-                let (face, value) = fv;
-                let card = Card {
-                    suit: String::from(suit),
-                    face: String::from(*face),
-                    value: *value,
-                };
-                cards.push(card);
-            }
-        }
-        // Return a deck with some cards
-        Deck { cards: Some(cards) }
     }
     pub fn setup_players(&mut self) {
         let number_of_players = self.get_number_of_players();
