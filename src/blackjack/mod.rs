@@ -9,7 +9,7 @@ pub struct Player {
     bankroll: i64,
     wager: i64,
     hand: Option<Vec<Card>>,
-    hand_status: HandStatus,
+    hand_status: HandState,
 }
 
 #[derive(Debug)]
@@ -38,7 +38,7 @@ pub struct Game {
 }
 
 #[derive(Debug)]
-pub enum HandStatus {
+pub enum HandState {
     Idle,
     Win,
     Lose,
@@ -137,22 +137,27 @@ impl Game {
                                 println!("You don't have enough money to wager {}", amount);
                                 continue;
                             }
-                            println!("{}, will wager ${}", player.name, amount);
+                            println!("{} will wager ${}", player.name, amount);
                             player.bankroll -= amount;
                             player.wager = amount;
+                            println!("\n");
                             break;
                         }
                         Err(_) => {}
                     }
                 }
             } else {
-                todo!("ai not implemented");
+                let mut rng = rand::thread_rng();
+                let amount = rng.gen_range(5..(player.bankroll as f64 * 0.1f64) as i64);
+                println!("{} will wager ${}", player.name, amount);
+                player.bankroll -= amount;
+                player.wager = amount;
             }
         }
         self.state = GameState::DealCards;
     }
     pub fn deal_cards(&mut self) {
-        println!("Dealing Cards!");
+        println!("\nDealing Cards!");
         // Deal players first card
         let players = self.players.as_ref().unwrap();
         for i in 0..players.len() {
@@ -165,10 +170,11 @@ impl Game {
         for i in 0..players.len() {
             self.deal_card(&(i as u8));
         }
+        self.display_hands();
         self.state = GameState::PlayersTurn;
     }
     pub fn players_turn(&mut self) {
-        println!("Players Turn!");
+        println!("\nPlayers Turn!");
         for player in self.players.as_mut().unwrap() {
             // Show hand total
             // User interaction (hit, stand, etc)
@@ -176,11 +182,11 @@ impl Game {
         self.state = GameState::DealerTurn;
     }
     pub fn dealer_turn(&mut self) {
-        println!("Dealer's Turn!");
+        println!("\nDealer's Turn!");
         self.state = GameState::Pay;
     }
     pub fn pay(&mut self) {
-        println!("Paying Out!");
+        println!("\nPaying Out!");
         self.state = GameState::RoundEnd;
     }
     pub fn round_end(&mut self) {
@@ -232,6 +238,61 @@ impl Game {
             }
         }
         card
+    }
+    pub fn display_hands(&mut self) {
+        let dealer_hand = self.dealer.hand.as_ref().unwrap();
+        for card in dealer_hand {
+            if dealer_hand.len() == 1 {
+                println!("Dealer card: {} of {}", card.face, card.suit);
+            } else {
+                println!("Dealer cards: {} of {}", card.face, card.suit);
+            }
+        }
+        let dealer_value: (u8, u8) = {
+            let mut sum: u8 = 0;
+            let mut modified: u8 = 0;
+            for card in dealer_hand {
+                let modifier: u8 = if card.face == "Ace" { 10 } else { 0 };
+                sum += card.value;
+                modified += card.value + modifier;
+            }
+            (sum, modified)
+        };
+        {
+            let (sum, modified) = dealer_value;
+            if sum != modified && modified < 22 {
+                println!("Dealer value: {} or {}", sum, modified);
+            } else {
+                println!("Dealer value: {}", sum);
+            }
+        }
+        println!("\n");
+        let players = self.players.as_mut().unwrap();
+        for i in 0..players.len() {
+            let player_hand = players[i].hand.as_ref().unwrap();
+            for card in player_hand {
+                println!("{} cards: {} of {}", players[i].name, card.face, card.suit);
+            }
+            let player_value: (u8, u8) = {
+                let mut sum: u8 = 0;
+                let mut modified: u8 = 0;
+                for card in player_hand {
+                    let modifier: u8 = if card.face == "Ace" { 10 } else { 0 };
+                    sum += card.value;
+                    modified += card.value + modifier;
+                }
+                (sum, modified)
+            };
+            {
+                let (sum, modified) = player_value;
+                if sum != modified && modified < 22 {
+                    println!("{} value: {} or {}", players[i].name, sum, modified);
+                } else {
+                    println!("{} value: {}", players[i].name, sum);
+                }
+            }
+            println!("\n");
+        }
     }
     pub fn deal_card(&mut self, player_index: &u8) {
         // Attempt to draw a card
@@ -364,7 +425,7 @@ impl Game {
             bankroll: 100,
             wager: 0,
             hand,
-            hand_status: HandStatus::Idle,
+            hand_status: HandState::Idle,
         };
         self.players.as_mut().unwrap().push(player);
     }
