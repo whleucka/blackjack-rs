@@ -117,6 +117,10 @@ impl Game {
                     // Parse result
                     match amount.trim().parse::<i64>() {
                         Ok(amount) => {
+                            if amount < 5 {
+                                println!("Wager amount must be greater than or equal to 5");
+                                continue;
+                            }
                             if amount > player.bankroll {
                                 println!("You don't have enough money to wager {}", amount);
                                 continue;
