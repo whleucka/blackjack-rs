@@ -1,95 +1,187 @@
 use rand::Rng;
 use std::{collections::HashMap, num::ParseIntError};
 
-#[derive(Debug)]
-struct Player {
+#[derive(Debug, Clone)]
+pub struct Player {
     index: u8,
     name: String,
     human: bool,
     bankroll: i64,
+    wager: i64,
     hand: Option<Vec<Card>>,
 }
 
 #[derive(Debug)]
-struct Dealer {
+pub struct Dealer {
     decks: Option<Vec<Deck>>,
     hand: Option<Vec<Card>>,
 }
 
 #[derive(Debug)]
-struct Deck {
+pub struct Deck {
     cards: Option<Vec<Card>>,
 }
 
 #[derive(Debug, Clone)]
-struct Card {
+pub struct Card {
     suit: String,
     face: String,
     value: u8,
 }
 
 #[derive(Debug)]
-struct Game {
+pub struct Game {
     state: GameState,
     dealer: Dealer,
     players: Option<Vec<Player>>,
 }
 
 #[derive(Debug)]
-enum GameState {
-    None,
+pub enum GameState {
+    Idle,
     RoundStart,
     NewGame,
-    ShuffleDecks,
     PlaceBets,
     DealCards,
     PlayersTurn,
     DealerTurn,
     Pay,
+    RoundEnd,
+    GameOver,
 }
 
 pub fn go() {
+    let hand = Some(Vec::<Card>::new());
     let mut game = Game {
-        state: GameState::None,
-        dealer: Dealer {
-            decks: None,
-            hand: None,
-        },
+        state: GameState::Idle,
+        dealer: Dealer { decks: None, hand },
         players: None,
     };
-    game.setup_players();
-    //game.new_game();
+    game.new_game();
 }
+
+const DELAY: u64 = 500;
 
 impl Game {
     pub fn new_game(&mut self) {
         self.state = GameState::NewGame;
-        game.shuffle_decks();
-        'game_loop: loop {
-            self.state = GameState::RoundStart;
+        self.setup_players();
+        self.shuffle_decks();
+        self.game_loop();
+    }
+    pub fn game_loop(&mut self) {
+        self.state = GameState::RoundStart;
+        loop {
+            self.check_players();
+            match self.state {
+                GameState::Idle => {}
+                GameState::RoundStart => self.round_start(),
+                GameState::NewGame => self.new_game(),
+                GameState::PlaceBets => self.place_bets(),
+                GameState::DealCards => self.deal_cards(),
+                GameState::PlayersTurn => self.players_turn(),
+                GameState::DealerTurn => self.dealer_turn(),
+                GameState::Pay => self.pay(),
+                GameState::RoundEnd => self.round_end(),
+                GameState::GameOver => self.game_over(),
+            }
+            let time = std::time::Duration::from_millis(DELAY);
+            std::thread::sleep(time);
         }
     }
-    pub fn deal_cards(&mut self) {
-        self.state = GameState::DealCards;
+    pub fn check_players(&mut self) {
+        let players = self.players.as_mut().unwrap();
+        if players.len() == 0 {
+            self.state = GameState::GameOver;
+        }
     }
-    pub fn place_bets(&mut self) {
+    pub fn game_over(&mut self) {
+        println!("Game over. Thanks for playing!");
+        std::process::exit(0);
+    }
+    pub fn round_start(&mut self) {
+        println!("\n\n-+- New Round! -+-\n\n");
         self.state = GameState::PlaceBets;
     }
-    pub fn players_turn(&mut self) {
+    pub fn place_bets(&mut self) {
+        println!("Place Your Bets!");
+        for player in self.players.as_mut().unwrap() {
+            if player.human {
+                loop {
+                    println!("{}, how much would you like to wager?", player.name);
+                    let mut amount: String = String::new();
+                    // Get user input
+                    std::io::stdin()
+                        .read_line(&mut amount)
+                        .expect("unable to read line");
+                    // Parse result
+                    match amount.trim().parse::<i64>() {
+                        Ok(amount) => {
+                            if amount > player.bankroll {
+                                println!("You don't have enough money to wager {}", amount);
+                                continue;
+                            }
+                            println!("{}, will wager ${}", player.name, amount);
+                            player.bankroll -= amount;
+                            player.wager = amount;
+                            break;
+                        }
+                        Err(_) => {}
+                    }
+                }
+            } else {
+                todo!("ai not implemented");
+            }
+        }
+        self.state = GameState::DealCards;
+    }
+    pub fn deal_cards(&mut self) {
+        println!("Dealing Cards!");
+        // Deal players first card
+        let players = self.players.as_ref().unwrap();
+        for i in 0..players.len() {
+            self.deal_card(&(i as u8));
+        }
+        // Dealer card
+        self.dealer_card();
+        // Deal players second card
+        let players = self.players.as_ref().unwrap();
+        for i in 0..players.len() {
+            self.deal_card(&(i as u8));
+        }
         self.state = GameState::PlayersTurn;
-        'players: loop {}
     }
-    pub fn dealers_turn(&mut self) {
+    pub fn players_turn(&mut self) {
+        println!("Players Turn!");
+        for player in self.players.as_mut().unwrap() {
+            // Show hand total
+            // User interaction (hit, stand, etc)
+        }
         self.state = GameState::DealerTurn;
-        'dealers: loop {}
     }
-    pub fn pay(&mut self) {
+    pub fn dealer_turn(&mut self) {
+        println!("Dealer's Turn!");
         self.state = GameState::Pay;
     }
+    pub fn pay(&mut self) {
+        println!("Paying Out!");
+        self.state = GameState::RoundEnd;
+    }
+    pub fn round_end(&mut self) {
+        self.state = GameState::RoundStart;
+        // Empty hands
+        self.dealer.hand.as_mut().unwrap().clear();
+        let players = self.players.as_mut().unwrap();
+        for i in 0..players.len() {
+            if players[i].bankroll <= 0 {
+                players.remove(i);
+                continue;
+            }
+            players[i].hand.as_mut().unwrap().clear();
+        }
+    }
     pub fn shuffle_decks(&mut self) {
-        self.state = GameState::ShuffleDecks;
         self.setup_decks();
-        println!("\n*** Shuffle! ***\n");
         // The dealer's decks
         let decks = self.dealer.decks.as_mut().unwrap();
         // Loop around each dec in Vec<Deck>
@@ -113,8 +205,14 @@ impl Game {
     }
     pub fn draw_card(&mut self) -> Option<Card> {
         let decks = self.dealer.decks.as_mut().unwrap();
-        let deck = decks.pop()?;
-        deck.cards?.pop()
+        let mut card: Option<Card> = None;
+        for i in 0..decks.len() {
+            if decks[i].cards.as_ref().unwrap().len() > 0 {
+                card = decks[i].cards.as_mut().unwrap().pop();
+                break;
+            }
+        }
+        card
     }
     pub fn deal_card(&mut self, player_index: &u8) {
         // Attempt to draw a card
@@ -129,6 +227,16 @@ impl Game {
             // Deck is None -- time to shuffle
             self.shuffle_decks();
             self.deal_card(player_index);
+        }
+    }
+    pub fn dealer_card(&mut self) {
+        // Attempt to draw a card
+        if let Some(card) = self.draw_card() {
+            self.dealer.hand.as_mut().unwrap().push(card)
+        } else {
+            // Deck is None -- time to shuffle
+            self.shuffle_decks();
+            self.dealer_card();
         }
     }
     pub fn setup_decks(&mut self) {
@@ -167,6 +275,7 @@ impl Game {
         let mut cards: Vec<Card> = Vec::new();
 
         for suit in suits {
+            // for each face value
             for fv in face_values.iter() {
                 let (face, value) = fv;
                 let card = Card {
@@ -177,12 +286,13 @@ impl Game {
                 cards.push(card);
             }
         }
+        // Return a deck with some cards
         Deck { cards: Some(cards) }
     }
     pub fn setup_players(&mut self) {
         let number_of_players = self.get_number_of_players();
         if number_of_players.is_err() {
-            // This might not be a number, try again
+            // Err, not a number, try again
             self.setup_players();
         } else {
             // Now we can create the players
@@ -228,12 +338,14 @@ impl Game {
     pub fn add_player(&mut self, is_human: &bool, index: &u8, name: &str) {
         // Add player to the game
         let hand = Some(Vec::<Card>::new());
-        self.players.as_mut().unwrap().push(Player {
+        let player = Player {
             index: *index,
             name: String::from(name),
             human: *is_human,
             bankroll: 100,
+            wager: 0,
             hand,
-        });
+        };
+        self.players.as_mut().unwrap().push(player);
     }
 }
