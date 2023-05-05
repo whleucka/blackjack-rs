@@ -321,7 +321,6 @@ impl Game {
     pub fn players_turn(&mut self) {
         println!("\nPlayers Turn!");
         for player in self.players.as_mut().unwrap() {
-            let mut i = 0;
             'player_turn: loop {
                 player.display_hand();
                 if player.human {
@@ -329,13 +328,13 @@ impl Game {
                     let action = player.human_action();
                     if action.trim() == String::from('h') {
                         // TODO: how to make this work?
-                        //self.deal_card(&i)
+                        //self.deal_card();
                     } else if action.trim() == String::from('s') {
                         break 'player_turn;
                     }
                 }
             }
-            i += 1;
+            println!("\n");
         }
         self.state = GameState::DealerTurn;
     }
@@ -434,7 +433,18 @@ impl Game {
         self.players = Some(Vec::new());
         for i in 0..*number_of_players {
             let is_human: bool = self.ask_create_player(&i);
-            self.add_player(&is_human, &i, &format!("Player {}", &i + 1));
+            // Add player to the game
+            let hand = Some(Vec::<Card>::new());
+            let player = Player {
+                index: i,
+                name: format!("Player {}", &i + 1),
+                human: is_human,
+                bankroll: 100,
+                wager: 0,
+                hand,
+                hand_status: HandState::Idle,
+            };
+            self.add_player(player);
         }
     }
     pub fn ask_create_player(&mut self, player_index: &u8) -> bool {
@@ -454,18 +464,7 @@ impl Game {
         // Return if the player is human based on input
         mode.contains("h")
     }
-    pub fn add_player(&mut self, is_human: &bool, index: &u8, name: &str) {
-        // Add player to the game
-        let hand = Some(Vec::<Card>::new());
-        let player = Player {
-            index: *index,
-            name: String::from(name),
-            human: *is_human,
-            bankroll: 100,
-            wager: 0,
-            hand,
-            hand_status: HandState::Idle,
-        };
+    pub fn add_player(&mut self, player: Player) {
         self.players.as_mut().unwrap().push(player);
     }
     pub fn game_over(&mut self) {

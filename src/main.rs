@@ -1,5 +1,5 @@
-mod blackjack;
+mod game;
 
 fn main() {
-    blackjack::go();
+    game::main();
 }
