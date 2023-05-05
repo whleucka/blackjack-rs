@@ -147,6 +147,7 @@ impl Game {
                     }
                 }
             } else {
+                // random bet for non-human
                 let mut rng = rand::thread_rng();
                 let amount = rng.gen_range(5..(player.bankroll as f64 * 0.1f64) as i64);
                 println!("{} will wager ${}", player.name, amount);
@@ -232,6 +233,7 @@ impl Game {
         let decks = self.dealer.decks.as_mut().unwrap();
         let mut card: Option<Card> = None;
         for i in 0..decks.len() {
+            // Draw a card from a non-empty deck
             if decks[i].cards.as_ref().unwrap().len() > 0 {
                 card = decks[i].cards.as_mut().unwrap().pop();
                 break;
@@ -239,7 +241,7 @@ impl Game {
         }
         card
     }
-    pub fn display_hands(&mut self) {
+    pub fn display_dealer_hand(&mut self) {
         let dealer_hand = self.dealer.hand.as_ref().unwrap();
         for card in dealer_hand {
             if dealer_hand.len() == 1 {
@@ -266,31 +268,39 @@ impl Game {
                 println!("Dealer value: {}", sum);
             }
         }
+    }
+    pub fn display_player_hand(&mut self, player_index: &u8) {
+        let players = self.players.as_mut().unwrap();
+        let i = *player_index as usize;
+        let player_hand = players[i].hand.as_ref().unwrap();
+        for card in player_hand {
+            println!("{} cards: {} of {}", players[i].name, card.face, card.suit);
+        }
+        let player_value: (u8, u8) = {
+            let mut sum: u8 = 0;
+            let mut modified: u8 = 0;
+            for card in player_hand {
+                let modifier: u8 = if card.face == "Ace" { 10 } else { 0 };
+                sum += card.value;
+                modified += card.value + modifier;
+            }
+            (sum, modified)
+        };
+        {
+            let (sum, modified) = player_value;
+            if sum != modified && modified < 22 {
+                println!("{} value: {} or {}", players[i].name, sum, modified);
+            } else {
+                println!("{} value: {}", players[i].name, sum);
+            }
+        }
+    }
+    pub fn display_hands(&mut self) {
+        self.display_dealer_hand();
         println!("\n");
         let players = self.players.as_mut().unwrap();
         for i in 0..players.len() {
-            let player_hand = players[i].hand.as_ref().unwrap();
-            for card in player_hand {
-                println!("{} cards: {} of {}", players[i].name, card.face, card.suit);
-            }
-            let player_value: (u8, u8) = {
-                let mut sum: u8 = 0;
-                let mut modified: u8 = 0;
-                for card in player_hand {
-                    let modifier: u8 = if card.face == "Ace" { 10 } else { 0 };
-                    sum += card.value;
-                    modified += card.value + modifier;
-                }
-                (sum, modified)
-            };
-            {
-                let (sum, modified) = player_value;
-                if sum != modified && modified < 22 {
-                    println!("{} value: {} or {}", players[i].name, sum, modified);
-                } else {
-                    println!("{} value: {}", players[i].name, sum);
-                }
-            }
+            self.display_player_hand(&(i as u8));
             println!("\n");
         }
     }
