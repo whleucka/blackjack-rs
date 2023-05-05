@@ -96,7 +96,7 @@ impl Game {
         }
     }
     pub fn game_over(&mut self) {
-        println!("Game over. Thanks for playing!");
+        println!("\nGame over. Thanks for playing!\n");
         std::process::exit(0);
     }
     pub fn round_start(&mut self) {
