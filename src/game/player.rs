@@ -37,7 +37,10 @@ impl Player {
         if upper <= 5 {
             upper = 10;
         }
-        let wager = rng.gen_range(5..upper);
+        let mut wager = rng.gen_range(5..upper);
+        if wager > self.bankroll {
+            wager = self.bankroll;
+        }
         self.set_wager(wager);
     }
     pub fn set_human(&mut self, is_human: bool) {

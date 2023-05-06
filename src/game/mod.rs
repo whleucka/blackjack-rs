@@ -81,13 +81,19 @@ impl Game {
         self.state = GameState::RoundStart;
     }
     pub fn round_start(&mut self) {
-        println!("\n** Round {}! **\n", self.round_number + 1);
+        println!(
+            "\n------------------ Round {}! ------------------\n",
+            self.round_number + 1
+        );
         self.state = GameState::PlaceBets;
     }
     pub fn place_bets(&mut self) {
         println!("Place your bets\n");
         let players = self.players.as_mut().unwrap();
         for player in players {
+            if !player.active {
+                continue;
+            }
             if player.human {
                 self.dealer.ask_wager(player);
             } else {
@@ -102,12 +108,18 @@ impl Game {
         // Deal the first card
         let players = self.players.as_mut().expect("there are no players");
         for player in players {
+            if !player.active {
+                continue;
+            }
             self.dealer.deal_card(player);
         }
         // A card for the dealer
         self.dealer.dealer_card();
         let players = self.players.as_mut().unwrap();
         for player in players {
+            if !player.active {
+                continue;
+            }
             self.dealer.deal_card(player);
         }
         self.state = GameState::PlayersTurn;
@@ -117,6 +129,9 @@ impl Game {
         let players = self.players.as_mut().unwrap();
         // Each player takes a turn
         for player in players {
+            if !player.active {
+                continue;
+            }
             self.dealer.player_turn(player);
         }
         self.state = GameState::DealerTurn;
@@ -126,6 +141,9 @@ impl Game {
         self.dealer.dealer_turn();
         let players = self.players.as_mut().unwrap();
         for player in players {
+            if !player.active {
+                continue;
+            }
             self.dealer.hand_status(player);
         }
         self.state = GameState::Payout;
@@ -133,6 +151,9 @@ impl Game {
     pub fn payout(&mut self) {
         let players = self.players.as_mut().unwrap();
         for player in players {
+            if !player.active {
+                continue;
+            }
             self.dealer.payout(player);
             println!("{} bankroll ${}", player.name, player.bankroll);
         }
@@ -141,6 +162,9 @@ impl Game {
     pub fn round_end(&mut self) {
         let players = self.players.as_mut().unwrap();
         for player in players {
+            if !player.active {
+                continue;
+            }
             if player.bankroll <= 0 {
                 println!("{} has been eliminated", player.name);
                 self.dealer.remove_player(player);

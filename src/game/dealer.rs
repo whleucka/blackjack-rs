@@ -169,6 +169,7 @@ impl Dealer {
             if total > 21 {
                 println!("{} bust\n", player.name);
                 player.hand.state = HandState::Lose;
+                break;
             } else if total == 21 && player.hand.count() == 2 {
                 println!("{} blackjack!\n", player.name);
                 player.hand.state = HandState::Blackjack;
