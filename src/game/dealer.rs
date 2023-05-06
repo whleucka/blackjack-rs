@@ -1,6 +1,6 @@
 use crate::game::card::Card;
 use crate::game::deck::Deck;
-use crate::game::hand::Hand;
+use crate::game::hand::{Hand, HandState};
 use crate::game::player::Player;
 
 use rand::Rng;
@@ -17,6 +17,73 @@ impl Dealer {
         Dealer {
             decks: Some(Vec::<Deck>::new()),
             hand: Hand::new(),
+        }
+    }
+    /**
+     * Remove a player from the game
+     */
+    pub fn remove_player(&mut self, player: &mut Player) {
+        player.active = false;
+    }
+    pub fn hand_status(&mut self, player: &mut Player) {
+        if player.hand.state == HandState::Blackjack || player.hand.state == HandState::Lose {
+            return;
+        }
+        let player_total = player.hand.get_total_single();
+        let dealer_total = self.hand.get_total_single();
+        if player_total > dealer_total {
+            player.hand.state = HandState::Win;
+        } else {
+            player.hand.state = HandState::Lose;
+        }
+    }
+    pub fn payout(&mut self, player: &mut Player) {
+        println!("\n");
+        match player.hand.state {
+            HandState::Idle => {}
+            HandState::Win => {
+                println!("{}, you win ${}", player.name, player.wager);
+                player.set_pay(player.wager);
+            }
+            HandState::Lose => {
+                println!("{}, you lose ${}", player.name, player.wager);
+                player.set_pay(-player.wager);
+            }
+            HandState::Blackjack => {
+                let amount = (player.wager as f64 * 1.5).floor() as i64;
+                println!("{}, you win ${}", player.name, amount);
+                player.set_pay(amount);
+            }
+        }
+        player.clear_wager();
+        player.hand.state = HandState::Idle;
+        self.hand.state = HandState::Idle;
+    }
+    /**
+     * As player for wager
+     */
+    pub fn ask_wager(&mut self, player: &mut Player) {
+        loop {
+            println!("{}, how much would you like to wager?", player.name);
+            println!("Current bankroll: ${}", player.bankroll);
+            let mut response = String::new();
+            io::stdin()
+                .read_line(&mut response)
+                .expect("couldn't read line");
+            let number = response.trim().parse::<i64>();
+            if number.is_ok() {
+                let wager = number.unwrap();
+                if wager == 0 {
+                    println!("Wager must be greater than 0")
+                } else if wager > player.bankroll {
+                    println!("You don't have that much to wager")
+                } else {
+                    player.set_wager(wager);
+                    break;
+                }
+            } else {
+                println!("Not a number, please try again");
+            }
         }
     }
     /**
@@ -66,6 +133,29 @@ impl Dealer {
             }
         }
     }
+    pub fn dealer_turn(&mut self) {
+        loop {
+            let total = self.hand.get_total_single();
+            println!("\nDealer hand:");
+            self.hand.display();
+            self.hand.display_total();
+            if total < 17 {
+                self.dealer_card();
+            } else if total > 21 {
+                println!("Dealer bust\n");
+                self.hand.state = HandState::Lose;
+                break;
+            } else if total == 21 && self.hand.count() == 2 {
+                println!("Dealer blackjack!\n");
+                self.hand.state = HandState::Blackjack;
+                break;
+            } else {
+                println!("Dealer stand\n");
+                // stand
+                break;
+            }
+        }
+    }
     pub fn player_turn(&mut self, player: &mut Player) {
         println!("{}, it is your turn:", player.name);
         loop {
@@ -76,11 +166,12 @@ impl Dealer {
             player.hand.display();
             player.hand.display_total();
             let total = player.hand.get_total_single();
-            if total > 22 {
+            if total > 21 {
                 println!("{} bust\n", player.name);
-                break;
+                player.hand.state = HandState::Lose;
             } else if total == 21 && player.hand.count() == 2 {
                 println!("{} blackjack!\n", player.name);
+                player.hand.state = HandState::Blackjack;
                 break;
             }
             println!("\n");
@@ -135,6 +226,8 @@ impl Dealer {
             if decks[i].cards.as_ref().unwrap().len() > 0 {
                 card = decks[i].cards.as_mut().unwrap().pop();
                 break;
+            } else if i == decks.len() - 1 {
+                return None;
             }
         }
         card
@@ -190,12 +283,13 @@ impl Dealer {
         Deck { cards: Some(cards) }
     }
     pub fn shuffle_decks(&mut self) {
+        self.create_decks();
         // The dealer's decks
-        let decks = self.decks.as_mut().unwrap();
+        let decks = self.decks.as_mut().expect("decks are none");
         // Loop around each dec in Vec<Deck>
         for deck in decks {
             // Unwrap the cards in the deck
-            let cards = deck.cards.as_mut().unwrap();
+            let cards = deck.cards.as_mut().expect("cards are none");
             let mut rng = rand::thread_rng();
             let mut temp: Vec<Card> = Vec::new();
             // Rearrange cards

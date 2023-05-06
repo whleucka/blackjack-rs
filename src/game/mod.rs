@@ -27,6 +27,7 @@ enum GameState {
 
 #[derive(Debug)]
 struct Game {
+    round_number: i64,
     players: Option<Vec<Player>>,
     dealer: Dealer,
     state: GameState,
@@ -35,6 +36,7 @@ struct Game {
 impl Game {
     pub fn new() -> Self {
         Game {
+            round_number: 0,
             players: Some(Vec::<Player>::new()),
             dealer: Dealer::new(),
             state: GameState::Idle,
@@ -79,17 +81,26 @@ impl Game {
         self.state = GameState::RoundStart;
     }
     pub fn round_start(&mut self) {
-        println!("\n** Round start! **\n");
+        println!("\n** Round {}! **\n", self.round_number + 1);
         self.state = GameState::PlaceBets;
     }
     pub fn place_bets(&mut self) {
         println!("Place your bets\n");
+        let players = self.players.as_mut().unwrap();
+        for player in players {
+            if player.human {
+                self.dealer.ask_wager(player);
+            } else {
+                player.computer_wager();
+            }
+            println!("{} will wager ${}", player.name, player.wager);
+        }
         self.state = GameState::DealHands;
     }
     pub fn deal_hands(&mut self) {
-        println!("Dealing hands...\n");
+        println!("\nDealing hands...\n");
         // Deal the first card
-        let players = self.players.as_mut().unwrap();
+        let players = self.players.as_mut().expect("there are no players");
         for player in players {
             self.dealer.deal_card(player);
         }
@@ -102,22 +113,55 @@ impl Game {
         self.state = GameState::PlayersTurn;
     }
     pub fn players_turn(&mut self) {
+        println!("Players turn...\n");
         let players = self.players.as_mut().unwrap();
+        // Each player takes a turn
         for player in players {
             self.dealer.player_turn(player);
         }
         self.state = GameState::DealerTurn;
     }
     pub fn dealer_turn(&mut self) {
-        panic!("wip");
+        println!("Dealer's turn...\n");
+        self.dealer.dealer_turn();
+        let players = self.players.as_mut().unwrap();
+        for player in players {
+            self.dealer.hand_status(player);
+        }
         self.state = GameState::Payout;
     }
     pub fn payout(&mut self) {
-        panic!("wip");
+        let players = self.players.as_mut().unwrap();
+        for player in players {
+            self.dealer.payout(player);
+            println!("{} bankroll ${}", player.name, player.bankroll);
+        }
         self.state = GameState::RoundEnd;
     }
     pub fn round_end(&mut self) {
-        panic!("wip");
+        let players = self.players.as_mut().unwrap();
+        for player in players {
+            if player.bankroll <= 0 {
+                println!("{} has been eliminated", player.name);
+                self.dealer.remove_player(player);
+            }
+            // Clear player hand
+            player.hand.clear();
+        }
+        // Clear dealers hand
+        self.dealer.hand.clear();
+        let players = self
+            .players
+            .as_ref()
+            .unwrap()
+            .iter()
+            .filter(|x| x.active)
+            .count();
+        if players == 0 {
+            println!("There are no players remaining. Game over.\n");
+            std::process::exit(0);
+        }
+        self.round_number += 1;
         self.state = GameState::RoundStart;
     }
 
@@ -142,21 +186,5 @@ impl Game {
             .as_mut()
             .expect("players should not be empty")
             .push(player)
-    }
-    /**
-     * Remove a player from the game
-     */
-    pub fn remove_player(&mut self, player: Player) {
-        // Position returns an index, and we can compare the struct
-        // using PartialEq trait
-        let index = self
-            .players
-            .as_mut()
-            .unwrap()
-            .iter()
-            .position(|x| *x == player)
-            .unwrap();
-        // If the order is not important, use swap replace O(1) vs remove O(n)
-        self.players.as_mut().unwrap().swap_remove(index);
     }
 }

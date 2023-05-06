@@ -2,11 +2,20 @@ use crate::game::card::Card;
 
 #[derive(Debug, PartialEq)]
 pub struct Hand {
+    pub state: HandState,
     pub cards: Option<Vec<Card>>,
+}
+#[derive(Debug, PartialEq)]
+pub enum HandState {
+    Idle,
+    Win,
+    Lose,
+    Blackjack,
 }
 impl Hand {
     pub fn new() -> Self {
         Hand {
+            state: HandState::Idle,
             cards: Some(Vec::<Card>::new()),
         }
     }
@@ -15,6 +24,9 @@ impl Hand {
      */
     pub fn count(&mut self) -> usize {
         self.cards.as_ref().unwrap().len()
+    }
+    pub fn clear(&mut self) {
+        self.cards = Some(Vec::<Card>::new());
     }
     pub fn get_total(&mut self) -> (u8, u8) {
         let cards = self.cards.as_ref().unwrap();
