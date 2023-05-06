@@ -5,6 +5,7 @@ use crate::game::player::Player;
 
 use rand::Rng;
 use std::collections::HashMap;
+use std::io;
 
 #[derive(Debug)]
 pub struct Dealer {
@@ -16,6 +17,53 @@ impl Dealer {
         Dealer {
             decks: Some(Vec::<Deck>::new()),
             hand: Hand::new(),
+        }
+    }
+    /**
+     * Ask for the number of players
+     */
+    pub fn human_or_computer(&mut self, player: &mut Player) {
+        loop {
+            println!("{}: are you Human (h) or Computer (c)?", player.name);
+            let mut mode: String = String::new();
+            // Get user input
+            std::io::stdin()
+                .read_line(&mut mode)
+                .expect("unable to read line");
+            // The only options are c or h
+            if !["h", "c"].contains(&mode.as_str().to_lowercase().trim()) {
+                continue;
+            }
+            // Return if the player is human based on input
+            if mode.contains("h") {
+                player.set_human(true);
+                break;
+            } else {
+                player.set_human(false);
+                break;
+            }
+        }
+    }
+    pub fn number_of_players(&self) -> u8 {
+        println!("How many players are playing?");
+        loop {
+            let mut response = String::new();
+            io::stdin()
+                .read_line(&mut response)
+                .expect("couldn't read line");
+            let number = response.trim().parse::<u8>();
+            if number.is_ok() {
+                let number = number.unwrap();
+                if number == 0 {
+                    println!("Number of players must be greater than 0")
+                } else if number > 8 {
+                    println!("Number of players must be 8 or less")
+                } else {
+                    return number;
+                }
+            } else {
+                println!("Not a number, please try again");
+            }
         }
     }
     pub fn player_turn(&mut self, player: &mut Player) {

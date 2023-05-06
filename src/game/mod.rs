@@ -6,7 +6,6 @@ pub mod player;
 
 use crate::game::dealer::Dealer;
 use crate::game::player::Player;
-use std::io;
 
 pub fn main() {
     let mut game = Game::new();
@@ -77,7 +76,6 @@ impl Game {
         self.dealer.create_decks();
         self.dealer.shuffle_decks();
         self.setup_players();
-        self.human_or_computer();
         self.state = GameState::RoundStart;
     }
     pub fn round_start(&mut self) {
@@ -124,61 +122,16 @@ impl Game {
     }
 
     /**
-     * Ask for the number of players
-     */
-    pub fn number_of_players(&self) -> u8 {
-        println!("How many players are playing?");
-        loop {
-            let mut response = String::new();
-            io::stdin()
-                .read_line(&mut response)
-                .expect("couldn't read line");
-            let number = response.trim().parse::<u8>();
-            if number.is_ok() {
-                let number = number.unwrap();
-                if number == 0 {
-                    println!("Number of players must be greater than 0")
-                } else if number > 8 {
-                    println!("Number of players must be 8 or less")
-                } else {
-                    return number;
-                }
-            } else {
-                println!("Not a number, please try again");
-            }
-        }
-    }
-    pub fn human_or_computer(&mut self) {
-        for player in self.players.as_mut().unwrap() {
-            loop {
-                println!("{}: are you Human (h) or Computer (c)?", player.name);
-                let mut mode: String = String::new();
-                // Get user input
-                std::io::stdin()
-                    .read_line(&mut mode)
-                    .expect("unable to read line");
-                // The only options are c or h
-                if !["h", "c"].contains(&mode.as_str().to_lowercase().trim()) {
-                    continue;
-                }
-                // Return if the player is human based on input
-                if mode.contains("h") {
-                    player.set_human(true);
-                    break;
-                } else {
-                    player.set_human(false);
-                    break;
-                }
-            }
-        }
-    }
-    /**
      * Setup players by adding them to the game
      */
     pub fn setup_players(&mut self) {
-        let number = self.number_of_players();
+        let number = self.dealer.number_of_players();
         for i in 0..number {
             self.add_player(Player::new(String::from(format!("Player {}", i + 1))));
+        }
+        let players = self.players.as_mut().unwrap();
+        for player in players {
+            self.dealer.human_or_computer(player);
         }
     }
     /**
