@@ -23,10 +23,14 @@ impl Player {
             wager: 0,
         }
     }
-    pub fn set_pay(&mut self, amount: i64) {}
+    pub fn set_pay(&mut self, amount: i64) {
+        self.bankroll += amount;
+    }
+    pub fn set_lose(&mut self, amount: i64) {
+        self.bankroll -= amount;
+    }
     pub fn set_wager(&mut self, wager: i64) {
         self.wager = wager;
-        self.bankroll -= wager;
     }
     pub fn clear_wager(&mut self) {
         self.wager = 0;

@@ -53,7 +53,7 @@ impl Dealer {
             }
             HandState::Lose => {
                 println!("{}, you lose ${}", player.name, player.wager);
-                player.set_pay(-player.wager);
+                player.set_lose(player.wager);
             }
             HandState::Blackjack => {
                 println!("{}, you win ${}", player.name, player.wager * 3);
