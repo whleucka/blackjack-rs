@@ -1,6 +1,17 @@
-use rand::Rng;
-use std::collections::HashMap;
+pub mod card;
+pub mod dealer;
+pub mod deck;
+pub mod hand;
+pub mod player;
+
+use crate::game::dealer::Dealer;
+use crate::game::player::Player;
 use std::io;
+
+pub fn main() {
+    let mut game = Game::new();
+    game.run();
+}
 
 #[derive(Debug)]
 enum GameState {
@@ -93,35 +104,11 @@ impl Game {
         self.state = GameState::PlayersTurn;
     }
     pub fn players_turn(&mut self) {
-        let players = self.players.as_ref().unwrap();
-        for i in 0..players.len() {
-            self.player_turn(&i);
+        let players = self.players.as_mut().unwrap();
+        for player in players {
+            self.dealer.player_turn(player);
         }
         self.state = GameState::DealerTurn;
-    }
-    pub fn player_turn(&mut self, index: &usize) {
-        let players = self.players.as_mut().unwrap();
-        let player = &mut players[*index];
-        println!("{}, it is your turn:", player.name);
-        loop {
-            println!("\nDealer hand:");
-            self.dealer.hand.display();
-            self.dealer.hand.display_total();
-            println!("\n{} hand:", player.name);
-            player.hand.display();
-            player.hand.display_total();
-            println!("\n");
-            let action = if player.human {
-                player.human_action()
-            } else {
-                player.computer_action()
-            };
-            if action.trim().to_lowercase() == "h" {
-                self.dealer.deal_card(player);
-            } else if action.trim().to_lowercase() == "s" {
-                break;
-            }
-        }
     }
     pub fn dealer_turn(&mut self) {
         panic!("wip");
@@ -219,254 +206,4 @@ impl Game {
         // If the order is not important, use swap replace O(1) vs remove O(n)
         self.players.as_mut().unwrap().swap_remove(index);
     }
-}
-
-#[derive(Debug, PartialEq)]
-struct Player {
-    name: String,
-    hand: Hand,
-    human: bool,
-}
-impl Player {
-    pub fn new(name: String) -> Self {
-        Player {
-            name,
-            hand: Hand::new(),
-            human: true,
-        }
-    }
-    pub fn set_human(&mut self, is_human: bool) {
-        self.human = is_human;
-    }
-    pub fn give_card(&mut self, card: Card) {
-        self.hand.cards.as_mut().unwrap().push(card);
-    }
-    pub fn human_action(&self) -> String {
-        println!("{}: hit (h) or stand (s)?", self.name);
-        let mut action: String = String::new();
-        // Get user input
-        std::io::stdin()
-            .read_line(&mut action)
-            .expect("unable to read line");
-        if !["h", "s"].contains(&action.as_str().to_lowercase().trim()) {
-            self.human_action();
-        }
-        action
-    }
-    pub fn computer_action(&self) -> String {
-        todo!("implement me");
-    }
-}
-
-#[derive(Debug)]
-struct Dealer {
-    decks: Option<Vec<Deck>>,
-    hand: Hand,
-}
-impl Dealer {
-    pub fn new() -> Self {
-        Dealer {
-            decks: Some(Vec::<Deck>::new()),
-            hand: Hand::new(),
-        }
-    }
-    /**
-     * Deal a card from the deck to the dealer
-     */
-    pub fn dealer_card(&mut self) {
-        // Attempt to draw a card
-        if let Some(card) = self.draw_card() {
-            self.hand.cards.as_mut().unwrap().push(card);
-        } else {
-            // Deck is None -- time to shuffle
-            self.shuffle_decks();
-            self.dealer_card();
-        }
-    }
-    /**
-     * Deal a card from the deck to a player
-     */
-    pub fn deal_card(&mut self, player: &mut Player) {
-        // Attempt to draw a card
-        if let Some(card) = self.draw_card() {
-            player.hand.cards.as_mut().unwrap().push(card);
-        } else {
-            // Deck is None -- time to shuffle
-            self.shuffle_decks();
-            self.deal_card(player);
-        }
-    }
-    /**
-     * Draw a card from the deck
-     */
-    pub fn draw_card(&mut self) -> Option<Card> {
-        let decks = self.decks.as_mut().unwrap();
-        let mut card: Option<Card> = None;
-        for i in 0..decks.len() {
-            // Draw a card from a non-empty deck
-            if decks[i].cards.as_ref().unwrap().len() > 0 {
-                card = decks[i].cards.as_mut().unwrap().pop();
-                break;
-            }
-        }
-        card
-    }
-    pub fn create_decks(&mut self) {
-        let number_of_decks: u8 = 6;
-        // Create new Vec<Deck>
-        let mut decks = Vec::new();
-        // Create n decks
-        for _i in 0..number_of_decks {
-            let deck = self.create_deck();
-            decks.push(deck);
-        }
-        // Assign the dealer some decks
-        self.decks = Some(decks);
-    }
-    pub fn create_deck(&mut self) -> Deck {
-        // Pips are not used, they are the symbols on the Card
-        // Suit are the symbols on the cards
-        let suits = vec!["Hearts", "Diamonds", "Spades", "Clubs"];
-        // Face value hash map
-        let face_values = HashMap::from([
-            ("Ace", 1),
-            ("Two", 2),
-            ("Three", 3),
-            ("Four", 4),
-            ("Five", 5),
-            ("Six", 6),
-            ("Seven", 7),
-            ("Eight", 8),
-            ("Nine", 9),
-            ("Ten", 10),
-            ("Jack", 10),
-            ("Queen", 10),
-            ("King", 10),
-        ]);
-        // Empty card vector, this will be the card deck
-        let mut cards: Vec<Card> = Vec::new();
-
-        for suit in suits {
-            // for each face value
-            for fv in face_values.iter() {
-                let (face, value) = fv;
-                let card = Card {
-                    suit: String::from(suit),
-                    face: String::from(*face),
-                    value: *value,
-                };
-                cards.push(card);
-            }
-        }
-        // Return a deck with some cards
-        Deck { cards: Some(cards) }
-    }
-    pub fn shuffle_decks(&mut self) {
-        // The dealer's decks
-        let decks = self.decks.as_mut().unwrap();
-        // Loop around each dec in Vec<Deck>
-        for deck in decks {
-            // Unwrap the cards in the deck
-            let cards = deck.cards.as_mut().unwrap();
-            let mut rng = rand::thread_rng();
-            let mut temp: Vec<Card> = Vec::new();
-            // Rearrange cards
-            while cards.len() > 0 {
-                let idx = rng.gen_range(0..=cards.len() - 1);
-                let card = cards.get(idx).expect("card index doesn't exist").clone();
-                temp.push(card);
-                cards.remove(idx);
-            }
-            // The shuffled deck
-            let shuffled_deck = Deck { cards: Some(temp) };
-            // Assign the dealer's deck to the shuffled deck
-            *deck = shuffled_deck;
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-struct Card {
-    suit: String,
-    face: String,
-    value: u8,
-}
-impl Card {}
-
-#[derive(Debug)]
-struct Deck {
-    cards: Option<Vec<Card>>,
-}
-impl Deck {
-    pub fn new() -> Self {
-        Deck {
-            cards: Some(Vec::<Card>::new()),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
-struct Hand {
-    cards: Option<Vec<Card>>,
-}
-impl Hand {
-    pub fn new() -> Self {
-        Hand {
-            cards: Some(Vec::<Card>::new()),
-        }
-    }
-    /**
-     * Return hand count
-     */
-    pub fn count(&mut self) -> usize {
-        self.cards.as_ref().unwrap().len()
-    }
-    pub fn get_total(&mut self) -> (u8, u8) {
-        let cards = self.cards.as_ref().unwrap();
-        let mut total = (0, 0);
-        for card in cards {
-            let special = if card.face == "Ace" { 10 } else { 0 };
-            total.0 += card.value;
-            total.1 += card.value + special;
-        }
-        total
-    }
-    pub fn get_total_single(&mut self) -> u8 {
-        let total = self.get_total();
-        let (sum, special) = total;
-        if special < 22 && special > sum {
-            return special;
-        }
-        sum
-    }
-    /**
-     * Print hand total
-     */
-    pub fn display_total(&mut self) {
-        let (sum, special) = self.get_total();
-        if special < 22 && special > sum {
-            println!("Total: {} or {}", sum, special);
-        } else {
-            println!("Total: {}", sum)
-        }
-    }
-    /**
-     * Print hand
-     */
-    pub fn display(&mut self) {
-        if let Some(cards) = &self.cards {
-            for card in cards {
-                if cards.len() == 1 {
-                    println!("{} of {}", card.face, card.suit);
-                } else {
-                    println!("{} of {}", card.face, card.suit);
-                }
-            }
-        }
-    }
-}
-
-pub fn main() {
-    let mut game = Game::new();
-    game.run();
 }
