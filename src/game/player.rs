@@ -19,7 +19,7 @@ impl Player {
             name,
             hand: Hand::new(),
             human: true,
-            bankroll: 1000,
+            bankroll: 5000,
             wager: 0,
         }
     }
