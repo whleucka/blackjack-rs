@@ -1,3 +1,4 @@
+use rand::Rng;
 use std::collections::HashMap;
 use std::io;
 
@@ -360,10 +361,31 @@ impl Dealer {
         // Return a deck with some cards
         Deck { cards: Some(cards) }
     }
-    pub fn shuffle_decks(&mut self) {}
+    pub fn shuffle_decks(&mut self) {
+        // The dealer's decks
+        let decks = self.decks.as_mut().unwrap();
+        // Loop around each dec in Vec<Deck>
+        for deck in decks {
+            // Unwrap the cards in the deck
+            let cards = deck.cards.as_mut().unwrap();
+            let mut rng = rand::thread_rng();
+            let mut temp: Vec<Card> = Vec::new();
+            // Rearrange cards
+            while cards.len() > 0 {
+                let idx = rng.gen_range(0..=cards.len() - 1);
+                let card = cards.get(idx).expect("card index doesn't exist").clone();
+                temp.push(card);
+                cards.remove(idx);
+            }
+            // The shuffled deck
+            let shuffled_deck = Deck { cards: Some(temp) };
+            // Assign the dealer's deck to the shuffled deck
+            *deck = shuffled_deck;
+        }
+    }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 struct Card {
     suit: String,
     face: String,
@@ -381,7 +403,6 @@ impl Deck {
             cards: Some(Vec::<Card>::new()),
         }
     }
-    pub fn shuffle_decks() {}
 }
 
 #[derive(Debug, PartialEq)]
