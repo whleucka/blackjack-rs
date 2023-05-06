@@ -1,4 +1,3 @@
-use crate::game::card::Card;
 use crate::game::hand::Hand;
 
 use rand::Rng;
@@ -49,9 +48,6 @@ impl Player {
     }
     pub fn set_human(&mut self, is_human: bool) {
         self.human = is_human;
-    }
-    pub fn give_card(&mut self, card: Card) {
-        self.hand.cards.as_mut().unwrap().push(card);
     }
     pub fn human_action(&self) -> String {
         println!("{}: hit (h) or stand (s)?", self.name);
