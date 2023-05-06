@@ -33,6 +33,8 @@ impl Dealer {
         let dealer_total = self.hand.get_total_single();
         if player_total > dealer_total {
             player.hand.state = HandState::Win;
+        } else if player_total == dealer_total {
+            player.hand.state = HandState::Push;
         } else {
             player.hand.state = HandState::Lose;
         }
@@ -41,18 +43,21 @@ impl Dealer {
         println!("\n");
         match player.hand.state {
             HandState::Idle => {}
-            HandState::Win => {
-                println!("{}, you win ${}", player.name, player.wager);
+            HandState::Push => {
+                println!("{}, push!", player.name);
                 player.set_pay(player.wager);
+            }
+            HandState::Win => {
+                println!("{}, you win ${}", player.name, player.wager * 2);
+                player.set_pay(player.wager * 2);
             }
             HandState::Lose => {
                 println!("{}, you lose ${}", player.name, player.wager);
                 player.set_pay(-player.wager);
             }
             HandState::Blackjack => {
-                let amount = (player.wager as f64 * 1.5).floor() as i64;
-                println!("{}, you win ${}", player.name, amount);
-                player.set_pay(amount);
+                println!("{}, you win ${}", player.name, player.wager * 3);
+                player.set_pay(player.wager * 3);
             }
         }
         player.clear_wager();

@@ -165,7 +165,7 @@ impl Game {
             if !player.active {
                 continue;
             }
-            if player.bankroll <= 0 {
+            if player.bankroll <= 5 {
                 println!("{} has been eliminated", player.name);
                 self.dealer.remove_player(player);
             }

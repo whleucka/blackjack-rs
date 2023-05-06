@@ -10,6 +10,7 @@ pub enum HandState {
     Idle,
     Win,
     Lose,
+    Push,
     Blackjack,
 }
 impl Hand {
