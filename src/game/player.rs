@@ -63,14 +63,14 @@ impl Player {
     }
     pub fn computer_action(&mut self) -> String {
         println!("{}: hit (h) or stand (s)?", self.name);
-        let mut action: String = String::new();
+        let mut _action: String = String::new();
         let total = self.hand.get_total_single();
         // TODO: implement strategy lookup from HashMap
         if total < 17 {
-            action = String::from("h");
+            _action = String::from("h");
         } else {
-            action = String::from("s");
+            _action = String::from("s");
         }
-        action
+        _action
     }
 }
