@@ -6,6 +6,9 @@ pub mod player;
 
 use crate::game::dealer::Dealer;
 use crate::game::player::Player;
+use std::{thread, time};
+
+const DELAY: u64 = 100;
 
 pub fn main() {
     let mut game = Game::new();
@@ -89,10 +92,16 @@ impl Game {
     }
     pub fn place_bets(&mut self) {
         println!("Place your bets\n");
+        // This is the rust way of looping over an option of Vec<T>
+        // The rust iterators are very pewerful
         self.players
+            // Returns a mut iterator of Vec<Player>
             .iter_mut()
+            // Flatten will unwrap all the Players in the Vec, droping None
             .flatten()
+            // Filtering on all active players
             .filter(|player| player.active)
+            // For each playaer, do xxx
             .for_each(|player| {
                 if player.human {
                     self.dealer.ask_wager(player);
@@ -177,6 +186,8 @@ impl Game {
             std::process::exit(0);
         }
         self.round_number += 1;
+        let sleep = time::Duration::from_millis(DELAY);
+        thread::sleep(sleep);
         self.state = GameState::RoundStart;
     }
 

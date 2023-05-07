@@ -18,15 +18,12 @@ impl Player {
             name,
             hand: Hand::new(),
             human: true,
-            bankroll: 5000,
+            bankroll: 100,
             wager: 0,
         }
     }
     pub fn set_pay(&mut self, amount: i64) {
         self.bankroll += amount;
-    }
-    pub fn set_lose(&mut self, amount: i64) {
-        self.bankroll -= amount;
     }
     pub fn set_wager(&mut self, wager: i64) {
         self.wager = wager;
@@ -36,7 +33,8 @@ impl Player {
     }
     pub fn computer_wager(&mut self) {
         let mut rng = rand::thread_rng();
-        let mut upper = (self.bankroll as f64 * 0.1f64).floor() as i64;
+        let pct: f64 = 0.01;
+        let mut upper = (self.bankroll as f64 * pct).floor() as i64;
         if upper <= 5 {
             upper = 10;
         }
@@ -44,7 +42,7 @@ impl Player {
         if wager > self.bankroll {
             wager = self.bankroll;
         }
-        self.set_wager(wager);
+        self.set_wager(wager.min(15000));
     }
     pub fn set_human(&mut self, is_human: bool) {
         self.human = is_human;

@@ -31,6 +31,10 @@ impl Dealer {
         }
         let player_total = player.hand.get_total_single();
         let dealer_total = self.hand.get_total_single();
+        if dealer_total > 21 && player_total < 22 {
+            player.hand.state = HandState::Win;
+            return;
+        }
         if player_total > dealer_total {
             player.hand.state = HandState::Win;
         } else if player_total == dealer_total {
@@ -45,7 +49,6 @@ impl Dealer {
             HandState::Idle => {}
             HandState::Push => {
                 println!("{}, push!", player.name);
-                player.set_pay(player.wager);
             }
             HandState::Win => {
                 println!("{}, you win ${}", player.name, player.wager * 2);
@@ -53,7 +56,7 @@ impl Dealer {
             }
             HandState::Lose => {
                 println!("{}, you lose ${}", player.name, player.wager);
-                player.set_lose(player.wager);
+                player.set_pay(-player.wager);
             }
             HandState::Blackjack => {
                 println!("{}, you win ${}", player.name, player.wager * 3);
@@ -148,11 +151,9 @@ impl Dealer {
                 self.dealer_card();
             } else if total > 21 {
                 println!("Dealer bust\n");
-                self.hand.state = HandState::Lose;
                 break;
             } else if total == 21 && self.hand.count() == 2 {
                 println!("Dealer blackjack!\n");
-                self.hand.state = HandState::Blackjack;
                 break;
             } else {
                 println!("Dealer stand\n");
@@ -232,8 +233,6 @@ impl Dealer {
             if decks[i].cards.as_ref().unwrap().len() > 0 {
                 card = decks[i].cards.as_mut().unwrap().pop();
                 break;
-            } else if i == decks.len() - 1 {
-                return None;
             }
         }
         card
@@ -253,7 +252,6 @@ impl Dealer {
     pub fn create_deck(&mut self) -> Deck {
         // Pips are not used, they are the symbols on the Card
         // Suit are the symbols on the cards
-        let suits = vec!["Hearts", "Diamonds", "Spades", "Clubs"];
         // Face value hash map
         let face_values = HashMap::from([
             ("Ace", 1),
@@ -273,7 +271,7 @@ impl Dealer {
         // Empty card vector, this will be the card deck
         let mut cards: Vec<Card> = Vec::new();
 
-        for suit in suits {
+        for suit in ["Hearts", "Diamonds", "Spades", "Clubs"] {
             // for each face value
             for fv in face_values.iter() {
                 let (face, value) = fv;
@@ -291,9 +289,7 @@ impl Dealer {
     pub fn shuffle_decks(&mut self) {
         self.create_decks();
         // The dealer's decks
-        let decks = self.decks.as_mut().expect("decks are none");
-        // Loop around each dec in Vec<Deck>
-        for deck in decks {
+        self.decks.iter_mut().flatten().for_each(|deck| {
             // Unwrap the cards in the deck
             let cards = deck.cards.as_mut().expect("cards are none");
             let mut rng = rand::thread_rng();
@@ -309,6 +305,6 @@ impl Dealer {
             let shuffled_deck = Deck { cards: Some(temp) };
             // Assign the dealer's deck to the shuffled deck
             *deck = shuffled_deck;
-        }
+        });
     }
 }

@@ -30,13 +30,12 @@ impl Hand {
         self.cards = Some(Vec::<Card>::new());
     }
     pub fn get_total(&mut self) -> (u8, u8) {
-        let cards = self.cards.as_ref().unwrap();
         let mut total = (0, 0);
-        for card in cards {
+        self.cards.iter().flatten().for_each(|card| {
             let special = if card.face == "Ace" { 10 } else { 0 };
             total.0 += card.value;
             total.1 += card.value + special;
-        }
+        });
         total
     }
     pub fn get_total_single(&mut self) -> u8 {
@@ -63,13 +62,9 @@ impl Hand {
      */
     pub fn display(&mut self) {
         if let Some(cards) = &self.cards {
-            for card in cards {
-                if cards.len() == 1 {
-                    println!("{} of {}", card.face, card.suit);
-                } else {
-                    println!("{} of {}", card.face, card.suit);
-                }
-            }
+            cards.iter().for_each(|card| {
+                println!("{} of {}", card.face, card.suit);
+            });
         }
     }
 }
