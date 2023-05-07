@@ -8,7 +8,7 @@ use crate::game::dealer::Dealer;
 use crate::game::player::Player;
 use std::{thread, time};
 
-const DELAY: u64 = 100;
+const DELAY: u64 = 2;
 
 pub fn main() {
     let mut game = Game::new();

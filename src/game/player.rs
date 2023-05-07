@@ -33,8 +33,10 @@ impl Player {
     }
     pub fn computer_wager(&mut self) {
         let mut rng = rand::thread_rng();
-        let pct: f64 = 0.01;
-        let mut upper = (self.bankroll as f64 * pct).floor() as i64;
+        let pct: f64 = 0.1;
+        let max: i64 = 25000;
+        let bet = self.bankroll as f64 * 0.05;
+        let mut upper = (bet * pct).floor() as i64;
         if upper <= 5 {
             upper = 10;
         }
@@ -42,7 +44,7 @@ impl Player {
         if wager > self.bankroll {
             wager = self.bankroll;
         }
-        self.set_wager(wager.min(15000));
+        self.set_wager(wager.min(max));
     }
     pub fn set_human(&mut self, is_human: bool) {
         self.human = is_human;
