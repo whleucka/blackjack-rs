@@ -89,89 +89,80 @@ impl Game {
     }
     pub fn place_bets(&mut self) {
         println!("Place your bets\n");
-        let players = self.players.as_mut().unwrap();
-        for player in players {
-            if !player.active {
-                continue;
-            }
-            if player.human {
-                self.dealer.ask_wager(player);
-            } else {
-                player.computer_wager();
-            }
-            println!("{} will wager ${}", player.name, player.wager);
-        }
+        self.players
+            .iter_mut()
+            .flatten()
+            .filter(|player| player.active)
+            .for_each(|player| {
+                if player.human {
+                    self.dealer.ask_wager(player);
+                } else {
+                    player.computer_wager();
+                }
+                println!("{} will wager ${}", player.name, player.wager);
+            });
         self.state = GameState::DealHands;
     }
     pub fn deal_hands(&mut self) {
         println!("\nDealing hands...\n");
         // Deal the first card
-        let players = self.players.as_mut().expect("there are no players");
-        for player in players {
-            if !player.active {
-                continue;
-            }
-            self.dealer.deal_card(player);
-        }
+        self.players
+            .iter_mut()
+            .flatten()
+            .filter(|player| player.active)
+            .for_each(|player| self.dealer.deal_card(player));
         // A card for the dealer
         self.dealer.dealer_card();
-        let players = self.players.as_mut().unwrap();
-        for player in players {
-            if !player.active {
-                continue;
-            }
-            self.dealer.deal_card(player);
-        }
+        self.players
+            .iter_mut()
+            .flatten()
+            .filter(|player| player.active)
+            .for_each(|player| self.dealer.deal_card(player));
         self.state = GameState::PlayersTurn;
     }
     pub fn players_turn(&mut self) {
         println!("Players turn...\n");
-        let players = self.players.as_mut().unwrap();
-        // Each player takes a turn
-        for player in players {
-            if !player.active {
-                continue;
-            }
-            self.dealer.player_turn(player);
-        }
+        self.players
+            .iter_mut()
+            .flatten()
+            .filter(|player| player.active)
+            .for_each(|player| self.dealer.player_turn(player));
         self.state = GameState::DealerTurn;
     }
     pub fn dealer_turn(&mut self) {
         println!("Dealer's turn...\n");
         self.dealer.dealer_turn();
-        let players = self.players.as_mut().unwrap();
-        for player in players {
-            if !player.active {
-                continue;
-            }
-            self.dealer.hand_status(player);
-        }
+        self.players
+            .iter_mut()
+            .flatten()
+            .filter(|player| player.active)
+            .for_each(|player| self.dealer.hand_status(player));
         self.state = GameState::Payout;
     }
     pub fn payout(&mut self) {
-        let players = self.players.as_mut().unwrap();
-        for player in players {
-            if !player.active {
-                continue;
-            }
-            self.dealer.payout(player);
-            println!("{} bankroll ${}", player.name, player.bankroll);
-        }
+        self.players
+            .iter_mut()
+            .flatten()
+            .filter(|player| player.active)
+            .for_each(|player| {
+                self.dealer.payout(player);
+                println!("{} bankroll ${}", player.name, player.bankroll);
+            });
         self.state = GameState::RoundEnd;
     }
     pub fn round_end(&mut self) {
-        let players = self.players.as_mut().unwrap();
-        for player in players {
-            if !player.active {
-                continue;
-            }
-            if player.bankroll <= 5 {
-                println!("{} has been eliminated", player.name);
-                self.dealer.remove_player(player);
-            }
-            // Clear player hand
-            player.hand.clear();
-        }
+        self.players
+            .iter_mut()
+            .flatten()
+            .filter(|player| player.active)
+            .for_each(|player| {
+                if player.bankroll <= 5 {
+                    println!("{} has been eliminated", player.name);
+                    self.dealer.remove_player(player);
+                }
+                // Clear player hand
+                player.hand.clear();
+            });
         // Clear dealers hand
         self.dealer.hand.clear();
         let players = self
