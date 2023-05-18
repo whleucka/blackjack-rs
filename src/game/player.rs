@@ -33,10 +33,10 @@ impl Player {
     }
     pub fn computer_wager(&mut self) {
         let mut rng = rand::thread_rng();
-        let pct: f64 = 0.1;
-        let max: i64 = 25000;
-        let bet = self.bankroll as f64 * 0.05;
-        let mut upper = (bet * pct).floor() as i64;
+        let pct: f64 = 0.05;
+        let max: i64 = 100;
+        let bet = self.bankroll as f64 * pct;
+        let mut upper = bet.floor() as i64;
         if upper <= 5 {
             upper = 10;
         }
